@@ -38,11 +38,13 @@ To view the changing of training loss and validation loss, replacing $PATH-logs$
 tensorboard --logdir $PATH-logs$
 ```
 
-# Configurations of the model
+# Configurations
 See ./0_JMAN/JMAN_train.py.
 
 # Todo 
 Add baseline implementations: Bi-GRU and Hierarchical Attention Network (HAN)
 
 # Acknowledgement
-Our code is based on [brightmart's implementation](https://github.com/brightmart/text_classification) of TextRNN and Hierarchical Attention Network under the MIT license.
+* Our code is based on [brightmart's implementation](https://github.com/brightmart/text_classification) of TextRNN and Hierarchical Attention Network under the MIT license.
+* The official Bibsonomy dataset is acquired from https://www.kde.cs.uni-kassel.de/bibsonomy/dumps/#dataset_description after request.
+* The official Zhihu dataset is from https://biendata.com/competition/zhihu/data/.
