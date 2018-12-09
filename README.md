@@ -21,7 +21,7 @@ This tool is the source code for the proposed method reported in the submitted p
 * ./cache_vocabulary_label_pik stores the cached .pik files about vocabularies and labels
 
 # Quick Start
-Extract the two dataset files in the ./dataset/dataset.7z
+The files under ./dataset, ./embeddings and ./knowledge_bases can be downloaded from https://1drv.ms/u/s!AlvsB_ZEXPkijMlQrwT67O4ljU_y5w.
 
 To train with the bibsonomy dataset
 ```
@@ -48,3 +48,5 @@ Add baseline implementations: Bi-GRU and Hierarchical Attention Network (HAN)
 * Our code is based on [brightmart's implementation](https://github.com/brightmart/text_classification) of TextRNN and Hierarchical Attention Network under the MIT license.
 * The official Bibsonomy dataset is acquired from https://www.kde.cs.uni-kassel.de/bibsonomy/dumps/#dataset_description after request.
 * The official Zhihu dataset is from https://biendata.com/competition/zhihu/data/.
+* The whole Microsoft Concept Graph is acquired from https://concept.research.microsoft.com/Home/Introduction.
+* THe DBpedia SKOS concepts 2015-10 is acquired from http://downloads.dbpedia.org/2015-10/core/.
