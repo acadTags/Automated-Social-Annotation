@@ -54,7 +54,7 @@ tf.app.flags.DEFINE_float("lambda_sub",0,"the lambda for sub-loss.")
 tf.app.flags.DEFINE_float("keep_label_percent",1,"the percentage of labels in each instance of the training data to be randomly reserved, the rest labels are dropped to simulate the missing label scenario.")
 
 #for both tuning and final testing
-tf.app.flags.DEFINE_string("training_data_path_bib","../datasets/bibsonomy_preprocessed_title+abstract_for_HAN.txt","path of traning data.") # for bibsonomy dataset
+tf.app.flags.DEFINE_string("training_data_path_bib","../datasets/bibsonomy_preprocessed_title+abstract.txt","path of traning data.") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("training_data_path_zhihu","../datasets/question_train_set_title_cleaned_150000.txt","path of traning data.") # for zhihu dataset
 
 tf.app.flags.DEFINE_float("valid_portion",0.111,"dev set or test set portion") # this is only valid when kfold is -1, which means we hold out a fixed set for validation. 
