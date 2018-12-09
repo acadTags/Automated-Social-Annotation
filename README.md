@@ -21,6 +21,8 @@ This tool is the source code for the proposed method reported in the submitted p
 * ./cache_vocabulary_label_pik stores the cached .pik files about vocabularies and labels
 
 # Quick Start
+Extract the two dataset files in the ./dataset/dataset.7z
+
 To train with the bibsonomy dataset
 ```
 python JMAN_train.py --dataset bibsonomy-clean --embedding_id jman-bibsonomy
