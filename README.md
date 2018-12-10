@@ -49,4 +49,4 @@ Add baseline implementations: Bi-GRU and Hierarchical Attention Network (HAN)
 * The official Bibsonomy dataset is acquired from https://www.kde.cs.uni-kassel.de/bibsonomy/dumps/#dataset_description after request.
 * The official Zhihu dataset is from https://biendata.com/competition/zhihu/data/.
 * The whole Microsoft Concept Graph is acquired from https://concept.research.microsoft.com/Home/Introduction.
-* THe DBpedia SKOS concepts 2015-10 is acquired from http://downloads.dbpedia.org/2015-10/core/.
+* The DBpedia SKOS concepts 2015-10 is acquired from http://downloads.dbpedia.org/2015-10/core/.
