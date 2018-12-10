@@ -46,7 +46,7 @@ Add baseline implementations: Bi-GRU and Hierarchical Attention Network (HAN)
 
 # Acknowledgement
 * Our code is based on [brightmart's implementation](https://github.com/brightmart/text_classification) of TextRNN and Hierarchical Attention Network under the MIT license.
-* The official Bibsonomy dataset is acquired from https://www.kde.cs.uni-kassel.de/bibsonomy/dumps/#dataset_description after request.
+* The official Bibsonomy dataset is acquired from https://www.kde.cs.uni-kassel.de/bibsonomy/dumps/ after request.
 * The official Zhihu dataset is from https://biendata.com/competition/zhihu/data/.
 * The whole Microsoft Concept Graph is acquired from https://concept.research.microsoft.com/Home/Introduction.
 * The DBpedia SKOS concepts 2015-10 is acquired from http://downloads.dbpedia.org/2015-10/core/.
