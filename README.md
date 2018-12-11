@@ -42,7 +42,7 @@ tensorboard --logdir $PATH-logs$
 See ./0_JMAN/JMAN_train.py.
 
 # Todo 
-Add baseline implementations: Bi-GRU and Hierarchical Attention Network (HAN)
+Add baseline implementation: Hierarchical Attention Network (HAN).
 
 # Acknowledgement
 * Our code is based on [brightmart's implementation](https://github.com/brightmart/text_classification) of TextRNN and Hierarchical Attention Network under the MIT license.
