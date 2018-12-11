@@ -12,9 +12,9 @@ This tool is the source code for the proposed method reported in the paper title
 * [TFLearn](http://tflearn.org/)
 
 # Contents
-* ./0_JMAN/JMAN_train.py contains code for configuration and training
-* ./0_JMAN/JMAN_model.py contains the computational graph, loss function and optimisation
-* ./0_JMAN/data_util.py contains code for input and target generation
+* ./0 JMAN/JMAN_train.py contains code for configuration and training
+* ./0 JMAN/JMAN_model.py contains the computational graph, loss function and optimisation
+* ./0 JMAN/data_util.py contains code for input and target generation
 * ./embeddings contains self-trained word2vec embeddings
 * ./datasets contains the datasets used
 * ./knowledge_bases contains knowledge sources used for label subsumption relations
