@@ -15,6 +15,7 @@ This tool is the source code for the proposed method reported in the paper title
 * ./0 JMAN/JMAN_train.py contains code for configuration and training
 * ./0 JMAN/JMAN_model.py contains the computational graph, loss function and optimisation
 * ./0 JMAN/data_util.py contains code for input and target generation
+* ./1 BiGRU/ and ./2 HAN/ have a code similar structure as in ./0 JMAN/.
 * ./embeddings contains self-trained word2vec embeddings
 * ./datasets contains the datasets used
 * ./knowledge_bases contains knowledge sources used for label subsumption relations
@@ -32,6 +33,8 @@ To train with the zhihu dataset
 ```
 python JMAN_train.py --dataset zhihu-sample --embedding_id jman-zhihu
 ```
+
+Similarly, we can train both dataset using the Bi-GRU or the HAN model by running each \_train.py file in the ./1 BiGRU/ or ./2 HAN/ folder.
 
 To view the changing of training loss and validation loss, replacing $PATH-logs$ to a real path.
 ```
