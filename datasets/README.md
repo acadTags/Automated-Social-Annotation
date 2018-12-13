@@ -1,6 +1,6 @@
 # Datasets
 
-The cleaned and randomly sampled datasets can be downloaded from https://1drv.ms/u/s!AlvsB_ZEXPkijMlQrwT67O4ljU_y5w.
+The cleaned and randomly sampled datasets can be downloaded from [OneDrive](https://1drv.ms/u/s!AlvsB_ZEXPkijMlQrwT67O4ljU_y5w).
 
 This folder contains dataset files:
 * For the Bibsonomy dataset
