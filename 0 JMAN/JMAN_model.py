@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow.contrib as tf_contrib
 
 class JMAN:
-    def __init__(self, num_classes, learning_rate, batch_size, decay_steps, decay_rate, sequence_length, sequence_length_title, num_sentences,vocab_size, embed_size, hidden_size, is_training, lambda_sim=0.00001, lambda_sub=0, need_sentence_level_attention_encoder_flag=True, multi_label_flag=False, initializer=tf.random_normal_initializer(stddev=0.1),clip_gradients=5.0):#0.01
+    def __init__(self, num_classes, learning_rate, batch_size, decay_steps, decay_rate, sequence_length, sequence_length_title, num_sentences,vocab_size, embed_size, hidden_size, is_training, lambda_sim=0.00001, lambda_sub=0, variations="JMAN", multi_label_flag=False, initializer=tf.random_normal_initializer(stddev=0.1),clip_gradients=5.0):#0.01
         """init all hyperparameter here"""
         # set hyperparamter
         self.num_classes = num_classes
@@ -20,11 +20,17 @@ class JMAN:
         self.initializer = initializer
         self.multi_label_flag = multi_label_flag
         self.hidden_size = hidden_size
-        self.need_sentence_level_attention_encoder_flag = need_sentence_level_attention_encoder_flag
         self.clip_gradients=clip_gradients
         self.lambda_sim=lambda_sim
         self.lambda_sub=lambda_sub
+        self.variations = variations
         
+        if self.variations == "JMAN":
+            pass
+        elif self.variations == "JMAN-s" or self.variations == "JMAN-s-att" or self.variations == "JMAN-s-tg":
+            self.lambda_sim=0
+            self.lambda_sub=0
+            
         # add placeholder (X,label)
         self.input_x = tf.placeholder(tf.int32, [None, self.sequence_length], name="input_x") # this is for abstract
         self.input_x_title = tf.placeholder(tf.int32, [None, self.sequence_length_title], name="input_x") # this is for title
@@ -53,14 +59,17 @@ class JMAN:
             print("going to use multi label loss.")
             if self.lambda_sim == 0:
                 if self.lambda_sub == 0:
+                    # none
                     self.loss_val = self.loss_multilabel() # without any semantic regulariser, no j_sim or j_sub
                 else:
-                    self.loss_val = self.loss_multilabel_onto_new_8(self.label_sub_matrix); # using j_sub only
+                    # using j_sub only
+                    self.loss_val = self.loss_multilabel_onto_new_8(self.label_sub_matrix);
             else:
                 if self.lambda_sub == 0:
                     # using j_sim only
                     self.loss_val = self.loss_multilabel_onto_new_2(self.label_sim_matrix)
                 else:
+                    # sim+sub
                     self.loss_val = self.loss_multilabel_onto_new_7(self.label_sim_matrix,self.label_sub_matrix)
         else:
             print("going to use single label loss.")
@@ -106,8 +115,13 @@ class JMAN:
         with tf.name_scope("embedding_projection"):  # embedding matrix
             self.Embedding = tf.get_variable("Embedding", shape=[self.vocab_size, self.embed_size],
                                              initializer=self.initializer)  # [vocab_size,embed_size] tf.random_uniform([self.vocab_size, self.embed_size],-1.0,1.0)
-            self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 10, self.num_classes],
-                                                initializer=self.initializer)  # [embed_size,label_size] # 6 = 4 + 2
+            if self.variations == "JMAN-s-att" or self.variations == "JMAN-s-tg":
+                self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 6, self.num_classes],
+                                                initializer=self.initializer)  # [embed_size,label_size] # 6 = 2 + 4
+            else: # default setting, also for "JMAN" and "JMAN-s"
+                self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 10, self.num_classes],
+                                                initializer=self.initializer)  # [embed_size,label_size] # 10 = 2 + 4 + 4
+                                                
             self.b_projection = tf.get_variable("b_projection", shape=[self.num_classes])  #TODO [label_size]
             
         # GRU parameters:update gate related
@@ -437,55 +451,46 @@ class JMAN:
         self.hidden_state_sentence = [tf.concat([h_forward, h_backward], axis=1) for h_forward, h_backward in zip(hidden_state_forward_sentences, hidden_state_backward_sentences)]
         print('self.hidden_state_sentence', len(self.hidden_state_sentence), self.hidden_state_sentence[0].get_shape())
         
-        # 4.Sentence Attention
-        abstract_representation = self.attention_sentence_level(self.hidden_state_sentence)  # shape:[None,hidden_size*4] # get abstract rep using attention
-        #abstract_representation = tf.add_n(self.hidden_state_sentence)/len(self.hidden_state_sentence) # get abstract rep using mean-pooling.
-        
-        # 5.Title Representation
-        # 5.1) get emebedding of words in the title
+        # 4.Title Representation
+        # 4.1) get emebedding of words in the title
         self.embedded_words_title = tf.nn.embedding_lookup(self.Embedding,self.input_x_title) #shape:[None,sequence_length_title,embed_size]
         print('self.embedded_words_title', self.embedded_words_title.get_shape())
-        # 5.2) bi-gru layer
-        # 5.2.1) forward gru for title
+        # 4.2) bi-gru layer
+        # 4.2.1) forward gru for title
         hidden_state_forward_title = self.gru_forward_word_level_title(self.embedded_words_title)  # a list.length is sentence_length, each element is [None,hidden_size*2]
-        # 5.2.2) backward gru for sentence
+        # 4.2.2) backward gru for sentence
         hidden_state_backward_title = self.gru_backward_word_level_title(self.embedded_words_title)  # a list,length is sentence_length, each element is [None,hidden_size*2]
         self.hidden_state_title = [tf.concat([h_forward, h_backward], axis=1) for h_forward, h_backward in
                              zip(hidden_state_forward_title, hidden_state_backward_title)]
-        # 5.3) attention of words in title                     
+        # 4.3) attention of words in title                     
         title_representation = self.attention_word_level_title(self.hidden_state_title)
         print('title_representation', title_representation.get_shape())
-        abstract_representation_title_guided = self.attention_sentence_level_title_guided(self.hidden_state_sentence,title_representation)  # shape:[None,hidden_size*4]
-        print('abstract_representation', abstract_representation.get_shape())
-        print('abstract_representation_title_guided', abstract_representation_title_guided.get_shape())
-        # 6.Document Representation 
-        # option1: concatenation
-        document_representation = tf.concat([title_representation, abstract_representation_title_guided, abstract_representation], axis=1) # this is concatenation of title + abs
-        # option2: attention (1)
-        #title_representation_proj = tf.tanh(tf.matmul(title_representation, self.W_title) + self.b_title) # non-linear
-        #title_representation_proj = tf.matmul(title_representation, self.W_title) + self.b_title # linear
-        #print('title_representation_proj', title_representation_proj.get_shape())
-        #rep_list_tit_abs = [title_representation_proj, abstract_representation]
-        #print('rep_list_tit_abs', rep_list_tit_abs[0].get_shape())
-        #document_representation = self.attention_tit_abs_level(rep_list_tit_abs)
-        # option3: attention (2)
-        #att_score = tf.tanh(tf.matmul(title_representation, self.W_title) + tf.matmul(abstract_representation, self.W_abs))
         
-        # option4: max-pooling
-        #title_representation_proj = tf.matmul(title_representation, self.W_title) + self.b_title
-        #print('title_representation_proj', title_representation_proj.get_shape())
+        # 5. (Title-guided) Sentence-level Attention for content/abstract representation
+        if self.variations == "JMAN-s-tg": # without title-guided sentence-level attention mechanism 
+            abstract_representation_original = self.attention_sentence_level(self.hidden_state_sentence)  # shape:[None,hidden_size*4] # get abstract rep using attention
+            print('abstract_representation_original', abstract_representation_original.get_shape())
+            
+            document_representation = tf.concat([title_representation, abstract_representation_original], axis=1) # this is concatenation of title + abs
+        elif self.variations == "JMAN-s-att": # without original sentence-level attention mechanism 
+            abstract_representation_title_guided = self.attention_sentence_level_title_guided(self.hidden_state_sentence,title_representation)  # shape:[None,hidden_size*4]
+            print('abstract_representation_title_guided', abstract_representation_title_guided.get_shape())
+    
+            document_representation = tf.concat([title_representation, abstract_representation_title_guided], axis=1) # this is concatenation of title + abs
+        else: # this is the default setting, also for "JMAN", "JMAN-s"
+            abstract_representation_original = self.attention_sentence_level(self.hidden_state_sentence)  # shape:[None,hidden_size*4] # get abstract rep using attention
+            #abstract_representation_original = tf.add_n(self.hidden_state_sentence)/len(self.hidden_state_sentence) # get abstract rep using mean-pooling.
+            print('abstract_representation_original', abstract_representation_original.get_shape())
+        
+            abstract_representation_title_guided = self.attention_sentence_level_title_guided(self.hidden_state_sentence,title_representation)  # shape:[None,hidden_size*4]
+            print('abstract_representation_title_guided', abstract_representation_title_guided.get_shape())
+    
+            document_representation = tf.concat([title_representation, abstract_representation_title_guided, abstract_representation_original], axis=1) # this is concatenation of title + abs
         
         print('document_representation', document_representation.get_shape())
         with tf.name_scope("dropout"):
             self.h_drop = tf.nn.dropout(document_representation,keep_prob=self.dropout_keep_prob)  # shape:[None,hidden_size*4]
         # dropout some elements in the document_representation.
-        # self-attention over label space
-        #label_representation = tf.matmul(self.h_drop, self.W_projection) + self.b_projection  # 
-        #Q = tf.matmul(self.label_representation, self.W_q)
-        #K = tf.matmul(self.label_representation, self.W_k)
-        #V = tf.matmul(self.label_representation, self.W_v)
-        #with tf.name_scope("output"):
-        #    logits = tf.matmul(Q, tf.transpose(K)) + self.b_projection 
         # 7. logits(use linear layer)and predictions(argmax)
         with tf.name_scope("output"):
             logits = tf.matmul(self.h_drop, self.W_projection) + self.b_projection  # shape:[None,self.num_classes]==tf.matmul([None,hidden_size*2],[hidden_size*2,self.num_classes])
