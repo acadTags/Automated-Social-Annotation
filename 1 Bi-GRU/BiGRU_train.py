@@ -57,26 +57,30 @@ tf.app.flags.DEFINE_float("keep_label_percent",1,"the percentage of labels in ea
 #for both tuning and final testing
 tf.app.flags.DEFINE_string("training_data_path_bib","../datasets/bibsonomy_preprocessed_merged.txt","path of traning data.") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("training_data_path_zhihu","../datasets/question_train_set_cleaned_150000.txt","path of traning data.") # for zhihu dataset
+tf.app.flags.DEFINE_string("training_data_path_sof","../datasets/stacksample_cleaned_title110000_th_10.txt","path of traning data.") # for sof dataset
 
 tf.app.flags.DEFINE_float("valid_portion",0.111,"dev set or test set portion") # this is only valid when kfold is -1, which means we hold out a fixed set for validation. 
 tf.app.flags.DEFINE_float("test_portion",0.1,"held-out evaluation: test set portion")
 tf.app.flags.DEFINE_integer("kfold",10,"k-fold cross-validation") # if k is -1, then not using kfold cross-validation
 
-tf.app.flags.DEFINE_string("embedding_id","","an embedding_id (or group_id) for better marking: will show in the output filenames")
+tf.app.flags.DEFINE_string("marking_id","","an marking_id (or group_id) for better marking: will show in the output filenames")
 
 tf.app.flags.DEFINE_string("word2vec_model_path_bib","../embeddings/whole-tit-abs.bin-100","word2vec's vocabulary and vectors for inputs")
 tf.app.flags.DEFINE_string("word2vec_model_path_zhihu","../embeddings/word150000.bin-100","word2vec's vocabulary and vectors")
+tf.app.flags.DEFINE_string("word2vec_model_path_sof","../embeddings/word-sof-sample.bin-100","word2vec's vocabulary and vectors")
 
 tf.app.flags.DEFINE_string("emb_model_path_bib","../embeddings/tag-all-bib.bin-300","pre-trained model from bibsonomy labels")
 tf.app.flags.DEFINE_string("emb_model_path_zhihu","../embeddings/tag_all.bin-300","pre-trained model from zhihu labels")
+tf.app.flags.DEFINE_string("emb_model_path_sof","../embeddings/tag-sof-all.bin-300","pre-trained model from sof labels")
 #tf.app.flags.DEFINE_string("glove_model_path","../embeddings/glove.6B.300d.txt","glove's pre-trained model for labels")
 
 tf.app.flags.DEFINE_string("kb_dbpedia_path","../knowledge_bases/bibsonomy_skos_withredir_pw_candidts_all_labelled.csv","labels matched to DBpedia skos and redir relations") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("kb_MCG_path","../knowledge_bases/bibsonomy_mcg5_pw_candidts_all_labelled.csv","labels matched to Microsoft Concept Graph relations") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("kb_zhihu","../knowledge_bases/zhihu_kb.csv","label relations for zhihu data") # for zhihu dataset
+tf.app.flags.DEFINE_string("kb_sof","../knowledge_bases/sof-mcg-kb.csv","label relations for sof data") # for zhihu dataset
 
 tf.app.flags.DEFINE_boolean("multi_label_flag",True,"use multi label or single label.")
-tf.app.flags.DEFINE_integer("num_sentences", 10, "number of sentences in the document")
+#tf.app.flags.DEFINE_integer("num_sentences", 10, "number of sentences in the document")
 tf.app.flags.DEFINE_integer("hidden_size",100,"hidden size") # same as embedding size
 tf.app.flags.DEFINE_boolean("weight_decay_testing",True,"weight decay based on validation data.") # decay the weight by half if validation loss increases.
 tf.app.flags.DEFINE_boolean("report_rand_pred",True,"report prediction for qualitative analysis")
@@ -111,7 +115,6 @@ def main(_):
         #configurations:
         FLAGS.batch_size = 128
         FLAGS.sequence_length = 300
-        FLAGS.num_sentences = 10 #length of sentence 30
         FLAGS.ave_labels_per_doc = 12.43
         FLAGS.lambda_sim = 0 # lambda1
         FLAGS.lambda_sub = 0 # lambda2
@@ -133,12 +136,32 @@ def main(_):
         #configurations:
         FLAGS.batch_size = 1024
         FLAGS.sequence_length = 100
-        FLAGS.num_sentences = 4 #length of sentence 25
         FLAGS.ave_labels_per_doc = 2.45
         FLAGS.lambda_sim = 0 # lambda1
         FLAGS.lambda_sub = 0 # lambda2
         FLAGS.topk = 2
+    
+    elif FLAGS.dataset == "sof-sample":
+        word2vec_model_path = FLAGS.word2vec_model_path_sof
+        traning_data_path = FLAGS.training_data_path_sof
+        emb_model_path = FLAGS.emb_model_path_sof
         
+        vocabulary_word2index_label,vocabulary_index2word_label = create_voabulary_label(voabulary_label=traning_data_path, name_scope=FLAGS.dataset + "-JMAN")
+        
+        #similarity relations: using self-trained label embedding
+        label_sim_mat = get_label_sim_matrix(vocabulary_index2word_label,emb_model_path,name_scope=FLAGS.dataset)
+        
+        #subsumption relations: using zhihu crowdsourced relations
+        label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_sof,name_scope='sof');print('using sof relations')
+        
+        #configurations:
+        FLAGS.batch_size = 1024
+        FLAGS.sequence_length = 300
+        FLAGS.ave_labels_per_doc = 2.64
+        FLAGS.lambda_sim = 0 # lambda1
+        FLAGS.lambda_sub = 0 # lambda2
+        FLAGS.topk = 3
+        #FLAGS.early_stop_lr = 0.003
     else:
         print("dataset unrecognisable")
         sys.exit()
@@ -458,10 +481,10 @@ def main(_):
     average_time_train = "--- The average training took %s ± %s seconds ---" % (sum(time_train)/num_runs,statistics.stdev(time_train))
 
     # output setting configuration, results, prediction and time used
-    output_to_file('l2 ' + str(FLAGS.lambda_sim) + " l3 " + str(FLAGS.lambda_sub) + ' th' + str(FLAGS.label_sim_threshold) + ' keep_label_percent' + str(FLAGS.keep_label_percent) + ' kfold' + str(FLAGS.kfold) + ' b_s' + str(FLAGS.batch_size) + ' gp_id' + str(FLAGS.embedding_id) + '.txt',setting + '\n' + output_valid + '\n' + output_test + '\n' + prediction_str + '\n' + time_used + '\n' + average_time_train)
+    output_to_file('l2 ' + str(FLAGS.lambda_sim) + " l3 " + str(FLAGS.lambda_sub) + ' th' + str(FLAGS.label_sim_threshold) + ' keep_label_percent' + str(FLAGS.keep_label_percent) + ' kfold' + str(FLAGS.kfold) + ' b_s' + str(FLAGS.batch_size) + ' gp_id' + str(FLAGS.marking_id) + '.txt',setting + '\n' + output_valid + '\n' + output_test + '\n' + prediction_str + '\n' + time_used + '\n' + average_time_train)
     # output structured evaluation results
-    output_to_file('l2 ' + str(FLAGS.lambda_sim) + " l3 " + str(FLAGS.lambda_sub) + ' th' + str(FLAGS.label_sim_threshold) + ' keep_label_percent' + str(FLAGS.keep_label_percent) + ' kfold' + str(FLAGS.kfold) + ' b_s' + str(FLAGS.batch_size) + ' gp_id' + str(FLAGS.embedding_id) + ' valid.csv',output_csv_valid)
-    output_to_file('l2 ' + str(FLAGS.lambda_sim) + " l3 " + str(FLAGS.lambda_sub) + ' th' + str(FLAGS.label_sim_threshold) + ' keep_label_percent' + str(FLAGS.keep_label_percent) + ' kfold' + str(FLAGS.kfold) + ' b_s' + str(FLAGS.batch_size) + ' gp_id' + str(FLAGS.embedding_id) + ' test.csv',output_csv_test)
+    output_to_file('l2 ' + str(FLAGS.lambda_sim) + " l3 " + str(FLAGS.lambda_sub) + ' th' + str(FLAGS.label_sim_threshold) + ' keep_label_percent' + str(FLAGS.keep_label_percent) + ' kfold' + str(FLAGS.kfold) + ' b_s' + str(FLAGS.batch_size) + ' gp_id' + str(FLAGS.marking_id) + ' valid.csv',output_csv_valid)
+    output_to_file('l2 ' + str(FLAGS.lambda_sim) + " l3 " + str(FLAGS.lambda_sub) + ' th' + str(FLAGS.label_sim_threshold) + ' keep_label_percent' + str(FLAGS.keep_label_percent) + ' kfold' + str(FLAGS.kfold) + ' b_s' + str(FLAGS.batch_size) + ' gp_id' + str(FLAGS.marking_id) + ' test.csv',output_csv_test)
     pass
 
 def output_to_file(file_name,str):
