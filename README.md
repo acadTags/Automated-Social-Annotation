@@ -26,12 +26,12 @@ The files under ./dataset and ./knowledge_bases can be downloaded from [OneDrive
 
 To train with the bibsonomy dataset
 ```
-python JMAN_train.py --dataset bibsonomy-clean --embedding_id jman-bibsonomy
+python JMAN_train.py --dataset bibsonomy-clean --marking_id bib
 ```
 
 To train with the zhihu dataset
 ```
-python JMAN_train.py --dataset zhihu-sample --embedding_id jman-zhihu
+python JMAN_train.py --dataset zhihu-sample --marking_id zhihu-jman
 ```
 
 Similarly, we can train both dataset using the Bi-GRU or the HAN model by running each \_train.py file in the ./1 BiGRU/ or ./2 HAN/ folder.
