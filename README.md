@@ -24,7 +24,7 @@ The preprint of this paper will be available by the end of March.
 * ./cache_vocabulary_label_pik stores the cached .pik files about vocabularies and labels
 
 # Quick Start
-The files under ./dataset and ./knowledge_bases can be downloaded from [OneDrive](https://1drv.ms/u/s!AlvsB_ZEXPkijMlQrwT67O4ljU_y5w). For data format, see the [dataset folder](https://github.com/acadTags/Automated-Social-Annotation/tree/master/datasets).
+The files under ./dataset and ./knowledge_bases can be downloaded from [will update the link]. For data format, see the [dataset folder](https://github.com/acadTags/Automated-Social-Annotation/tree/master/datasets).
 
 To train with the bibsonomy dataset
 ```
