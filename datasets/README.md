@@ -4,7 +4,7 @@ The cleaned and randomly sampled datasets can be downloaded from [will update th
 
 This folder contains dataset files:
 * For the Bibsonomy dataset
-  * bibsonomy_preprocessed_merged.txt The cleaned Bibsonomy publication dataset, where variations of multiword  and single tags were grouped together and filtered by user frequency and each publication has one tag mapped to the ACM classification System. There are finally 16684 publications (documents). The documents (rows) were randomly ordered in the file. The words after "\_\_label\_\_" are the cleaned user-generated tags.
+  * bibsonomy_preprocessed_merged.txt The cleaned Bibsonomy publication dataset, where variations of multiword  and single tags were grouped together and filtered by user frequency and each publication has one tag mapped to the ACM classification System. There are finally 12101 publications (documents). The documents (rows) were randomly ordered in the file. The words after "\_\_label\_\_" are the cleaned user-generated tags.
   * bibsonomy_preprocessed_merged_for_HAN.txt Each sentence is further parsed and padded to length of 30 words.
   * bibsonomy_preprocessed_title+abstract.txt The title is further separated from the document. The words after "\_\_abstract\_\_" are abstract/content; words before "\_\_abstract\_\_" are words in title; words after "\_\_label\_\_" are the cleaned user-generated tags.
 
