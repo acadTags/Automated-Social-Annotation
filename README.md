@@ -4,6 +4,7 @@ Joint Multi-label Attention Network (JMAN) is a neural network model for documen
 This tool is the source code for the proposed method reported in the paper titled
 * Joint Multi-label Attention Network for Social Text Annotation, NAACL-19
 
+The program is being updated continously.
 The preprint of this paper will be available by the end of March.
 
 # Requirements
