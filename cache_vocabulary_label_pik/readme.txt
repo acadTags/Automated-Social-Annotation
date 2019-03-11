@@ -1,0 +1,1 @@
+Keep this folder in the program. The vocabulary, label information and the label similarity matrix and label subsumption matrix are stored here after the first run.
