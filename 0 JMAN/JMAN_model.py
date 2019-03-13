@@ -1,3 +1,8 @@
+# partly adapted from the https://github.com/brightmart/text_classification/tree/master/a05_HierarchicalAttentionNetwork
+
+# author: Hang Dong
+# last updated: 13 March 2019
+
 # -*- coding: utf-8 -*-
 import tensorflow as tf
 import numpy as np
@@ -242,7 +247,6 @@ class JMAN:
         #print('document_representation in attention_sentence_level',document_representation.get_shape()) # document_representation in attention_sentence_level (128, 400)
         return document_representation  # shape:[None,hidden_size*4]
         
-    # very nice representation: I can generally understand it, but so far I cannot preogram this from scratch.    
     def attention_word_level(self, hidden_state):
         """
         input1:self.hidden_state: hidden_state:list,len:sentence_length,element:[batch_size*num_sentences,hidden_size*2]
@@ -575,7 +579,7 @@ class JMAN:
         return loss    
         
     # the original L_sim with L_sub 
-    # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hypernym of T_k.
+    # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hyponym of T_k.
     def loss_multilabel_onto_new_simsub(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001): #*3#0.00001 #TODO 0.0001#this loss function is for multi-label classification
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`

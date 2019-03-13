@@ -1,3 +1,8 @@
+# partly adapted from the https://github.com/brightmart/text_classification/tree/master/a05_HierarchicalAttentionNetwork
+
+# author: Hang Dong
+# last updated: 13 March 2019
+
 # -*- coding: utf-8 -*-
 #training the model.
 #process--->1.load data(X:list of lint,y:int). 2.create session. 3.feed data. 4.training (5.validation) ,(6.prediction)
@@ -31,7 +36,6 @@ start_time = time.time()
 #configuration
 FLAGS=tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string("dataset","bibsonomy-clean","dataset to chose") # two options: "bibsonomy-clean" and "zhihu-sample"
-#tf.app.flags.DEFINE_string("dataset","zhihu-sample","dataset to chose") # two options: "bibsonomy-clean" and "zhihu-sample"
 
 tf.app.flags.DEFINE_float("learning_rate",0.01,"learning rate")
 tf.app.flags.DEFINE_integer("batch_size", 128, "Batch size for training/evaluating.") # We applied 128 for Bibsonomy and 1024 for Zhihu.
@@ -57,11 +61,6 @@ tf.app.flags.DEFINE_float("keep_label_percent",1,"the percentage of labels in ea
 #for both tuning and final testing - using the -title version
 tf.app.flags.DEFINE_string("training_data_path_bib","../datasets/bibsonomy_preprocessed_title+abstract_for_JMAN_final.txt","path of traning data.") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("training_data_path_zhihu","../datasets/question_train_set_title_cleaned_150000.txt","path of traning data.") # for zhihu dataset
-tf.app.flags.DEFINE_string("training_data_path_sof","../datasets/stacksample_cleaned_title110000_th_10_new.txt","path of traning data.") # for sof dataset
-tf.app.flags.DEFINE_string("training_data_path_cua","../datasets/citeulike_cleaned_title_th10.txt","path of traning data.") # for cua dataset
-tf.app.flags.DEFINE_string("training_data_path_cua_acm","../datasets/citeulike_cleaned_title_th10_filtered_acm.txt","path of traning data.") # for cua-acm dataset
-tf.app.flags.DEFINE_string("training_data_path_cut","../datasets/citeulike_t_cleaned_title_th10.txt","path of traning data.") # for cut dataset
-tf.app.flags.DEFINE_string("training_data_path_cut_acm","../datasets/citeulike_t_cleaned_title_th10_filtered_acm.txt","path of traning data.") # for cut dataset
 
 tf.app.flags.DEFINE_float("valid_portion",0.1,"dev set or test set portion") # this is only valid when kfold is -1, which means we hold out a fixed set for validation. If we set this as 0.1, then there will be 0.81 0.09 0.1 for train-valid-test split (same as the split of 10-fold cross-validation); if we set this as 0.111, then there will be 0.8 0.1 0.1 for train-valid-test split.
 tf.app.flags.DEFINE_float("test_portion",0.1,"held-out evaluation: test set portion")
