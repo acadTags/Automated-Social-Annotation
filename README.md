@@ -48,7 +48,11 @@ tensorboard --logdir $PATH-logs$
 ```
 
 # Key Configuration
-You can set the learning rate (--learning\_rate), number of epochs (--num\_epochs), fold for cross-validation (--kfold), early stop learning rate (--early\_stop\_lr), and other configurations when you run the command, or set those in the \_train.py files.
+You can set the learning rate (--learning\_rate), number of epochs (--num\_epochs), fold for cross-validation (--kfold), early stop learning rate (--early\_stop\_lr), and other configurations when you run the command, or set those in the ```*_train.py``` files.
+
+Check the full list of configurations in the ```JMAN_train.py```, ```HAN_train.py``` and ```BiGRU_train.py``` files.
+
+In ```JMAN_train.py```:
 
 The --variations option in JMAN_train.py allows to test the downgraded baselines for ablation study.
 The --lambda\_sim and --lambda\_sub work only when the --variations is set as JMAN.
