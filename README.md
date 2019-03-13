@@ -15,14 +15,14 @@ The preprint of this paper will be available by the end of March.
 * [TFLearn](http://tflearn.org/)
 
 # Contents
-* ./0 JMAN/JMAN_train.py contains code for configuration and training
-* ./0 JMAN/JMAN_model.py contains the computational graph, loss function and optimisation
-* ./0 JMAN/data_util.py contains code for input and target generation
-* ./1 BiGRU/ and ./2 HAN/ have a code similar structure as in ./0 JMAN/.
-* ./embeddings contains self-trained word2vec embeddings
-* ./datasets contains the datasets used
-* ./knowledge_bases contains knowledge sources used for label subsumption relations
-* ./cache_vocabulary_label_pik stores the cached .pik files about vocabularies and labels
+* ```./0 JMAN/JMAN_train.py``` contains code for configuration and training
+* ```./0 JMAN/JMAN_model.py``` contains the computational graph, loss function and optimisation
+* ```./0 JMAN/data_util.py``` contains code for input and target generation
+* ```./1 BiGRU/``` and ```./2 HAN/``` have a similar structure as in ```./0 JMAN/```
+* ```./embeddings``` contains self-trained word2vec embeddings
+* ```./datasets``` contains the datasets used
+* ```./knowledge_bases``` contains knowledge sources used for label subsumption relations
+* ```./cache_vocabulary_label_pik``` stores the cached .pik files about vocabularies and labels
 
 # Quick Start
 The files under ./dataset, ./embeddings and ./knowledge_bases can be downloaded from [will update the link]. For the format of dataset, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder.
@@ -40,7 +40,7 @@ To train with the zhihu dataset
 python JMAN_train.py --dataset zhihu-sample --marking_id zhihu
 ```
 
-Similarly, we can train both dataset using the Bi-GRU or the HAN model by running each \_train.py file in the ./1 BiGRU/ or ./2 HAN/ folder.
+Similarly, we can train both dataset using the Bi-GRU or the HAN model by running each ```*_train.py``` file in the ```./1 BiGRU/``` or ```./2 HAN/``` folder.
 
 To view the changing of training loss and validation loss, replacing $PATH-logs$ to a real path.
 ```
@@ -48,7 +48,7 @@ tensorboard --logdir $PATH-logs$
 ```
 
 # Key Configuration
-You can set the learning rate (--learning\_rate), number of epochs (--num\_epochs), fold for cross-validation (--kfold), early stop learning rate (--early\_stop\_lr), and other configurations when you run the command, or set those in the ```*_train.py``` files.
+You can set the learning rate (```--learning\_rate```), number of epochs (```--num\_epochs```), fold for cross-validation (```--kfold```), early stop learning rate (```--early\_stop\_lr```), and other configurations when you run the command, or set those in the ```*_train.py``` files.
 
 Check the full list of configurations in the ```JMAN_train.py```, ```HAN_train.py``` and ```BiGRU_train.py``` files.
 
