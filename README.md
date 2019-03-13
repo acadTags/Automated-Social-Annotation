@@ -46,7 +46,7 @@ To view the changing of training loss and validation loss, replacing $PATH-logs$
 tensorboard --logdir $PATH-logs$
 ```
 
-# Key Configuration
+# Key Configurations
 You can set the learning rate (```--learning_rate```), number of epochs (```--num_epochs```), fold for cross-validation (```--kfold```), early stop learning rate (```--early_stop_lr```), and other configurations when you run the command, or set those in the ```*_train.py``` files.
 
 Check the full list of configurations in the ```JMAN_train.py```, ```HAN_train.py``` and ```BiGRU_train.py``` files.
