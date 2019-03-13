@@ -25,7 +25,7 @@ The preprint of this paper will be available by the end of March.
 * ./cache_vocabulary_label_pik stores the cached .pik files about vocabularies and labels
 
 # Quick Start
-The files under ./dataset and ./knowledge_bases can be downloaded from [will update the link]. For data format, see the [dataset folder](https://github.com/acadTags/Automated-Social-Annotation/tree/master/datasets).
+The files under ./dataset, ./embeddings and ./knowledge_bases can be downloaded from [will update the link]. For the format of dataset, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder.
 
 To train with the bibsonomy dataset
 ```
@@ -34,7 +34,7 @@ python JMAN_train.py --dataset bibsonomy-clean --marking_id bib
 
 To train with the zhihu dataset
 ```
-python JMAN_train.py --dataset zhihu-sample --marking_id zhihu-jman
+python JMAN_train.py --dataset zhihu-sample --marking_id zhihu
 ```
 
 Similarly, we can train both dataset using the Bi-GRU or the HAN model by running each \_train.py file in the ./1 BiGRU/ or ./2 HAN/ folder.
@@ -44,8 +44,15 @@ To view the changing of training loss and validation loss, replacing $PATH-logs$
 tensorboard --logdir $PATH-logs$
 ```
 
-# Configurations
-See ./0_JMAN/JMAN_train.py.
+# Key Configurations
+```
+tf.app.flags.DEFINE_float("learning_rate",0.01,"learning rate")
+tf.app.flags.DEFINE_integer("num_epochs",100,"number of epochs to run.")
+tf.app.flags.DEFINE_integer("kfold",10,"k-fold cross-validation") # if k is -1, then not using kfold cross-validation
+tf.app.flags.DEFINE_string("marking_id","","an marking_id (or group_id) for better marking: will show in the output filenames")
+tf.app.flags.DEFINE_float("early_stop_lr",0.00002,"early stop point when learning rate is belwo is threshold") #0.00002
+tf.app.flags.DEFINE_string("variations","JMAN","downgraded variations of the model JMAN: JMAN-s, JMAN-s-att, JMAN-s-tg") # downgraded variations of the model JMAN, there are 3 options: JMAN-s, JMAN-s-att, JMAN-s-tg
+```
 
 # Acknowledgement
 * Our code is based on [brightmart's implementation](https://github.com/brightmart/text_classification) of TextRNN and Hierarchical Attention Network under the MIT license.
