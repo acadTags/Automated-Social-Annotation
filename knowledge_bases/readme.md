@@ -11,6 +11,7 @@ Two types of format are allowed for the .csv files.
   ```
   wrong_hyponym,wrong_hypernym,false
   robin,cat,false
+  
   hyponym,hypernym,true
   robin,bird,true
   ```
