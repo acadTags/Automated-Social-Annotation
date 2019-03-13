@@ -48,14 +48,14 @@ tensorboard --logdir $PATH-logs$
 ```
 
 # Key Configuration
-You can set the learning rate (```--learning\_rate```), number of epochs (```--num\_epochs```), fold for cross-validation (```--kfold```), early stop learning rate (```--early\_stop\_lr```), and other configurations when you run the command, or set those in the ```*_train.py``` files.
+You can set the learning rate (```--learning_rate```), number of epochs (```--num_epochs```), fold for cross-validation (```--kfold```), early stop learning rate (```--early_stop_lr```), and other configurations when you run the command, or set those in the ```*_train.py``` files.
 
 Check the full list of configurations in the ```JMAN_train.py```, ```HAN_train.py``` and ```BiGRU_train.py``` files.
 
 In ```JMAN_train.py```:
 
-The --variations option in JMAN_train.py allows to test the downgraded baselines for ablation study.
-The --lambda\_sim and --lambda\_sub work only when the --variations is set as JMAN.
+The ```--variations``` option in ```JMAN_train.py``` allows to test the downgraded baselines for ablation study.
+The ```--lambda_sim``` and ```--lambda_sub``` work only when the ```--variations``` is set as JMAN.
 
 # Acknowledgement
 * Our code is based on [brightmart's implementation](https://github.com/brightmart/text_classification) of TextRNN and Hierarchical Attention Network under the MIT license.
