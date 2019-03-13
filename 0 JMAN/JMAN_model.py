@@ -49,7 +49,6 @@ class JMAN:
         self.decay_steps, self.decay_rate = decay_steps, decay_rate
 
         self.instantiate_weights()
-        #self.logits = self.inference()  # [None, self.label_size]. main computation graph is here.
 
         self.logits = self.inference() #[None, self.label_size]. main computation graph is here.
         
@@ -63,14 +62,15 @@ class JMAN:
                     self.loss_val = self.loss_multilabel() # without any semantic regulariser, no j_sim or j_sub
                 else:
                     # using j_sub only
-                    self.loss_val = self.loss_multilabel_onto_new_8(self.label_sub_matrix);
+                    self.loss_val = self.loss_multilabel_onto_new_sub(self.label_sub_matrix);
             else:
                 if self.lambda_sub == 0:
                     # using j_sim only
-                    self.loss_val = self.loss_multilabel_onto_new_2(self.label_sim_matrix)
+                    self.loss_val = self.loss_multilabel_onto_new_sim(self.label_sim_matrix) # j,k per batch
+                    
                 else:
                     # sim+sub
-                    self.loss_val = self.loss_multilabel_onto_new_7(self.label_sim_matrix,self.label_sub_matrix)
+                    self.loss_val = self.loss_multilabel_onto_new_simsub(self.label_sim_matrix,self.label_sub_matrix)
         else:
             print("going to use single label loss.")
             self.loss_val = self.loss()
@@ -99,14 +99,16 @@ class JMAN:
             self.recall = tf.reduce_mean(tf.div(tp,t))
                 
         self.training_loss = tf.summary.scalar("train_loss_per_batch",self.loss_val)
+        self.training_loss_per_epoch = tf.summary.scalar("train_loss_per_epoch",self.loss_val)
         self.training_loss_ce = tf.summary.scalar("train_loss_ce_per_batch",self.loss_ce)
         self.training_l2loss = tf.summary.scalar("train_l2loss_per_batch",self.l2_losses)
-        self.training_sim_loss = tf.summary.scalar("train_sim_loss_per_batch",self.onto_loss)
+        self.training_sim_loss = tf.summary.scalar("train_sim_loss_per_batch",self.sim_loss)
         self.training_sub_loss = tf.summary.scalar("train_sub_loss_per_batch",self.sub_loss)
         self.validation_loss = tf.summary.scalar("validation_loss_per_batch",self.loss_val)
+        self.validation_loss_per_epoch = tf.summary.scalar("validation_loss_per_epoch",self.loss_val)
         self.validation_loss_ce = tf.summary.scalar("validation_loss_ce_per_batch",self.loss_ce)
         self.validation_l2loss = tf.summary.scalar("validation_l2loss_per_batch",self.l2_losses)
-        self.validation_sim_loss = tf.summary.scalar("validation_sim_loss_per_batch",self.onto_loss)
+        self.validation_sim_loss = tf.summary.scalar("validation_sim_loss_per_batch",self.sim_loss)
         self.validation_sub_loss = tf.summary.scalar("validation_sub_loss_per_batch",self.sub_loss)
         self.writer = tf.summary.FileWriter("./logs")
 
@@ -230,9 +232,10 @@ class JMAN:
         # subtract max for numerical stability (softmax is shift invariant). tf.reduce_max:computes the maximum of elements across dimensions of a tensor.
         attention_logits_max = tf.reduce_max(attention_logits, axis=1, keep_dims=True)  # shape:[None,1]
         # 2) get possibility distribution for each word in the sentence.
-        p_attention = tf.nn.softmax(attention_logits - attention_logits_max)  # shape:[None,num_sentence]
+        self.p_attention_title = tf.nn.softmax(attention_logits - attention_logits_max)  # shape:[None,num_sentence]
+        # we will visualise self.p_attention_title to see how title guided the sentences.
         # 3) get weighted hidden state by attention vector(sentence level)
-        p_attention_expanded = tf.expand_dims(p_attention, axis=2)  # shape:[None,num_sentence,1]
+        p_attention_expanded = tf.expand_dims(self.p_attention_title, axis=2)  # shape:[None,num_sentence,1]
         document_representation = tf.multiply(p_attention_expanded,
                                               hidden_state_)  # shape:[None,num_sentence,hidden_size*4]<---p_attention_expanded:[None,num_sentence,1];hidden_state_:[None,num_sentence,hidden_size*4]
         document_representation = tf.reduce_sum(document_representation, axis=1)  # shape:[None,hidden_size*4]
@@ -274,11 +277,11 @@ class JMAN:
         attention_logits_max = tf.reduce_max(attention_logits, axis=1,
                                              keep_dims=True)  # shape:[batch_size*num_sentences,1]
         # 2) get possibility distribution for each word in the sentence.
-        p_attention = tf.nn.softmax(
+        self.p_attention_word = tf.nn.softmax(
             attention_logits - attention_logits_max)  # shape:[batch_size*num_sentences,sequence_length]
         # equation (6)    
         # 3) get weighted hidden state by attention vector
-        p_attention_expanded = tf.expand_dims(p_attention, axis=2)  # shape:[batch_size*num_sentences,sequence_length,1]
+        p_attention_expanded = tf.expand_dims(self.p_attention_word, axis=2)  # shape:[batch_size*num_sentences,sequence_length,1]
         # below sentence_representation'shape:[batch_size*num_sentences,sequence_length,hidden_size*2]<----p_attention_expanded:[batch_size*num_sentences,sequence_length,1];hidden_state_:[batch_size*num_sentences,sequence_length,hidden_size*2]
         sentence_representation = tf.multiply(p_attention_expanded,
                                               hidden_state_)  # shape:[batch_size*num_sentences,sequence_length,hidden_size*2]
@@ -312,9 +315,10 @@ class JMAN:
         # subtract max for numerical stability (softmax is shift invariant). tf.reduce_max:computes the maximum of elements across dimensions of a tensor.
         attention_logits_max = tf.reduce_max(attention_logits, axis=1, keep_dims=True)  # shape:[None,1]
         # 2) get possibility distribution for each word in the sentence.
-        p_attention = tf.nn.softmax(attention_logits - attention_logits_max)  # shape:[None,num_sentence]
+        self.p_attention = tf.nn.softmax(attention_logits - attention_logits_max)  # shape:[None,num_sentence]
         # 3) get weighted hidden state by attention vector(sentence level)
-        p_attention_expanded = tf.expand_dims(p_attention, axis=2)  # shape:[None,num_sentence,1]
+        p_attention_expanded = tf.expand_dims(self.p_attention, axis=2)  # shape:[None,num_sentence,1]
+        # we will visualise self.p_attention to see how the original sentence-level attention mechanism works.
         document_representation = tf.multiply(p_attention_expanded,
                                               hidden_state_)  # shape:[None,num_sentence,hidden_size*4]<---p_attention_expanded:[None,num_sentence,1];hidden_state_:[None,num_sentence,hidden_size*4]
         document_representation = tf.reduce_sum(document_representation, axis=1)  # shape:[None,hidden_size*4]
@@ -354,11 +358,11 @@ class JMAN:
         attention_logits_max = tf.reduce_max(attention_logits, axis=1,
                                              keep_dims=True)  # shape:[batch_size*num_sentences,1]
         # 2) get possibility distribution for each word in the sentence.
-        p_attention = tf.nn.softmax(
+        self.p_attention_word_title = tf.nn.softmax(
             attention_logits - attention_logits_max)  # shape:[batch_size*num_sentences,sequence_length]
         # equation (6)    
         # 3) get weighted hidden state by attention vector
-        p_attention_expanded = tf.expand_dims(p_attention, axis=2)  # shape:[batch_size*num_sentences,sequence_length,1]
+        p_attention_expanded = tf.expand_dims(self.p_attention_word_title, axis=2)  # shape:[batch_size*num_sentences,sequence_length,1]
         # below sentence_representation'shape:[batch_size*num_sentences,sequence_length,hidden_size*2]<----p_attention_expanded:[batch_size*num_sentences,sequence_length,1];hidden_state_:[batch_size*num_sentences,sequence_length,hidden_size*2]
         sentence_representation = tf.multiply(p_attention_expanded,
                                               hidden_state_)  # shape:[batch_size*num_sentences,sequence_length,hidden_size*2]
@@ -524,13 +528,13 @@ class JMAN:
             losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch
             self.loss_ce = tf.reduce_mean(losses)  # shape=().   average loss in the batch
             self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda #12 loss
-            self.onto_loss = tf.constant(0., dtype=tf.float32)
+            self.sim_loss = tf.constant(0., dtype=tf.float32)
             self.sub_loss = tf.constant(0., dtype=tf.float32)
             loss = self.loss_ce + self.l2_losses
         return loss
     
-    # sim-loss only
-    def loss_multilabel_onto_new_2(self, label_sim_matrix, l2_lambda=0.0001):
+    # L_sim only: j,k per batch
+    def loss_multilabel_onto_new_sim(self, label_sim_matrix, l2_lambda=0.0001):
     # here we will experiment with different value of onto_lambda.
         # original, embedding 100dim, 57.2% (f-measure@11)
         # lambda2 = 0.0001, embedding 100dim, 56.9% (f-measure@11)
@@ -548,34 +552,31 @@ class JMAN:
             self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
             
             # only considering the similarity of co-occuring label in each labelset y_d. 
-            co_label_mat_batch = tf.matmul(tf.transpose(self.input_y_multilabel),self.input_y_multilabel,a_is_sparse=True,b_is_sparse=True)
+            co_label_mat_batch = tf.matmul(tf.transpose(self.input_y_multilabel),self.input_y_multilabel,a_is_sparse=True,b_is_sparse=True) # input_y_multilabel is a matrix \in R^{|D|,|T|}
             co_label_mat_batch = tf.sign(co_label_mat_batch)
             label_sim_matrix = tf.multiply(co_label_mat_batch,label_sim_matrix) # only considering the label similarity of labels in the label set for this document (here is a batch).
             
             # sim-loss after sigmoid j_sim = sim(T_j,T_k)|s_dj-s_dk|^2
-            sig_output = tf.sigmoid(self.logits)
-            vec_square = tf.multiply(sig_output,sig_output)
-            vec_square = tf.reduce_sum(vec_square,0) # an array of num_classes values {sum_d l_di}_i
+            sig_output = tf.sigmoid(self.logits) # self.logit is the matrix S \in R^{|D|,|T|}
+            vec_square = tf.multiply(sig_output,sig_output) # element-wise multiplication 
+            vec_square = tf.reduce_sum(vec_square,0) # an array of num_classes values {sum_d l_dj^2}_j
             vec_mid = tf.matmul(tf.transpose(sig_output),sig_output)
-            vec_rows=tf.ones([tf.size(vec_square),1])*vec_square
+            vec_rows=tf.ones([tf.size(vec_square),1])*vec_square # copy the vector by it self to shape a square
             vec_columns=tf.transpose(vec_rows)
             vec_diff=vec_rows-2*vec_mid+vec_columns # (li-lj)^2=li^2-2lilj+lj^2 # vec_diff is now a matrix = {sum_d (l_di-l_dj)^2}_i,j
             vec_diff=tf.multiply(vec_diff,label_sim_matrix) #sim(T_i,T_j)*(li-lj)^2 # element-wise # using the label_sim_matrix
             #vec_diff=tf.multiply(vec_diff,co_label_mat_batch) # using only tag co-occurrence 
             vec_final=tf.reduce_sum(vec_diff)/2 # vec_diff is symmetric
             #vec_final=tf.reduce_sum(vec_diff)/2/self.num_classes/self.num_classes # vec_diff is symmetric
-            self.onto_loss=(vec_final/self.batch_size)*self.lambda_sim
+            self.sim_loss=(vec_final/self.batch_size)*self.lambda_sim
             
             self.sub_loss = tf.constant(0., dtype=tf.float32)
-            loss = self.loss_ce + self.l2_losses + self.onto_loss
-        return loss
-    
-    # the original j_sim <loss_multilabel_onto_new_2> with J_sub 
+            loss = self.loss_ce + self.l2_losses + self.sim_loss
+        return loss    
+        
+    # the original L_sim with L_sub 
     # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hypernym of T_k.
-    def loss_multilabel_onto_new_7(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001): #*3#0.00001 #TODO 0.0001#this loss function is for multi-label classification # the onto_lambda may need to tune further.
-    # here we will experiment with different value of onto_lambda.
-        # original, embedding 100dim, 57.2% (f-measure@11)
-        # lambda2 = 0.0001, embedding 100dim, 56.9% (f-measure@11)
+    def loss_multilabel_onto_new_simsub(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001): #*3#0.00001 #TODO 0.0001#this loss function is for multi-label classification
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
             # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
@@ -591,7 +592,7 @@ class JMAN:
             
             co_label_mat_batch = tf.matmul(tf.transpose(self.input_y_multilabel),self.input_y_multilabel,a_is_sparse=True,b_is_sparse=True)
             co_label_mat_batch = tf.sign(co_label_mat_batch)
-            label_sim_matrix = tf.multiply(co_label_mat_batch,label_sim_matrix) # only considering the label similarity of labels in the label set for this document (batch).
+            label_sim_matrix = tf.multiply(co_label_mat_batch,label_sim_matrix) # only considering the label similarity of labels in the label set for this document (batch of documents).
             label_sub_matrix = tf.multiply(co_label_mat_batch,label_sub_matrix)
             
             # the sim-loss after sigmoid
@@ -606,7 +607,7 @@ class JMAN:
             #vec_diff=tf.multiply(vec_diff,co_label_mat_batch) # using only tag co-occurrence 
             vec_final=tf.reduce_sum(vec_diff)/2 # vec_diff is symmetric
             #vec_final=tf.reduce_sum(vec_diff)/2/self.num_classes/self.num_classes # vec_diff is symmetric
-            self.onto_loss=(vec_final/self.batch_size)*self.lambda_sim
+            self.sim_loss=(vec_final/self.batch_size)*self.lambda_sim
             
             # the sub-loss after sigmoid 
             pred = tf.round(sig_output)
@@ -614,11 +615,11 @@ class JMAN:
             sub_loss = tf.multiply(pred_mat,label_sub_matrix)
             self.sub_loss = self.lambda_sub * tf.reduce_sum(sub_loss) / 2. / self.batch_size
             
-            loss = self.loss_ce + self.l2_losses + self.onto_loss + self.sub_loss
+            loss = self.loss_ce + self.l2_losses + self.sim_loss + self.sub_loss
         return loss
     
-    # j_sub only    
-    def loss_multilabel_onto_new_8(self, label_sub_matrix, l2_lambda=0.0001): #*3#0.00001 #TODO 0.0001#this loss function is for multi-label classification # the onto_lambda may need to tune further.
+    # L_sub only    
+    def loss_multilabel_onto_new_sub(self, label_sub_matrix, l2_lambda=0.0001): #*3#0.00001 #TODO 0.0001#this loss function is for multi-label classification # the onto_lambda may need to tune further.
     # here we will experiment with different value of onto_lambda.
         # original, embedding 100dim, 57.2% (f-measure@11)
         # lambda2 = 0.0001, embedding 100dim, 56.9% (f-measure@11)
@@ -647,7 +648,7 @@ class JMAN:
             sub_loss = tf.multiply(pred_mat,label_sub_matrix)
             self.sub_loss = self.lambda_sub * tf.reduce_sum(sub_loss) / 2. / self.batch_size
             
-            self.onto_loss = tf.constant(0., dtype=tf.float32)
+            self.sim_loss = tf.constant(0., dtype=tf.float32)
             loss = self.loss_ce + self.l2_losses + self.sub_loss
         return loss
         

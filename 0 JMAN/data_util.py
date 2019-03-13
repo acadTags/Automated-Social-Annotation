@@ -72,75 +72,6 @@ def get_label_sim_matrix(vocabulary_index2word_label,word2vec_model_label_path='
             with open(cache_path, 'ab') as data_f:
                 pickle.dump(result, data_f)
     return result
-
-# used for other embedding
-def get_label_sim_matrix_glove(vocabulary_index2word_label,glove_dict,name_scope='',threshold=0):
-    cache_path ='../cache_vocabulary_label_pik/'+ name_scope + "_label_sim_" + str(threshold) + ".pik"
-    print("cache_path:",cache_path,"file_exists:",os.path.exists(cache_path))
-    if os.path.exists(cache_path):
-        with open(cache_path, 'rb') as data_f:
-            result=pickle.load(data_f)
-            print("result",result)
-            print("result",result.shape)
-            m=result.shape[0]
-            print("retained similarities percentage:", str(float(np.count_nonzero(result))/float(m)/float(m)))
-            return result
-    else:
-        #model=word2vec.load(word2vec_model_label_path,kind='bin')
-        #m = model.vectors.shape[0]-1 #length # the first one is </s>, to be eliminated
-        m = len(vocabulary_index2word_label)
-        result=np.zeros((m,m))
-        #count_less_th = 0.0 # count the sim less than the threshold
-        n = 0
-        not_included_dict={} # a dictionary that count the words not included in the glove.
-        for i in range(0,m):
-            n=n+1
-            if n%500==0:
-                print(n)
-            for j in range(0,m):
-                if i==j:
-                    result[i][j] = 1 # set the sim as 1 on the diagonal of the sim matrix.
-                    #print('diagonal element at',i,j,':',result[i][j])
-                    continue
-                vector_i=glove_dict.get(vocabulary_index2word_label[i],0)
-                vector_j=glove_dict.get(vocabulary_index2word_label[j],0)
-                # check whether the word is a phrase word / multi-word, if so, use average embedding.
-                if (vector_i == 0):
-                    units = vocabulary_index2word_label[i].split("_")
-                    for unit in units:
-                        vector_i = np.add(vector_i,glove_dict.get(unit,0))                        
-                    vector_i = np.divide(vector_i,len(units))    
-                if (vector_j == 0):
-                    units = vocabulary_index2word_label[j].split("_")
-                    for unit in units:
-                        vector_j = np.add(vector_j,glove_dict.get(unit,0))
-                    vector_j = np.divide(vector_j,len(units))                    
-                #result[i][j] = np.dot(vector_i,vector_j.T) # can be negative here, result in [-1,1]
-                if np.any(vector_i != 0) and np.any(vector_j != 0): # now vector_i is an np array which need to be compared using np.any or np.all
-                    #result[i][j] = (1+np.dot(vector_i,vector_j))/2 # result in [0,1]
-                    result[i][j] = (1+np.dot(vector_i,vector_j)/(norm(vector_i)*norm(vector_j)))/2 #normalised cosine similarity
-                    if result[i][j] < threshold:
-                    #    count_less_th = count_less_th + 1
-                        result[i][j] = 0
-                else: 
-                    if np.all(vector_i == 0):
-                        not_included_dict[vocabulary_index2word_label[i]] = 0
-                    if np.all(vector_j == 0):
-                        not_included_dict[vocabulary_index2word_label[j]] = 0
-                    #result[i][j] = 0    # if at least one of the labels is not found in the glove embedding set, then set the sim as 0.
-                    #result[i][j] = label_sim_mat_int[i][j] #if not available, use the similarity from the internal source (pre-trained label embedding)
-                    result[i][j] = -1 #if not available, mark it as -1. 
-        print("result",result) # glove based label sim is visualised here.
-        print("result",result.shape)
-        print("retained similarities percentage:", str(float(np.count_nonzero(result))/float(m)/float(m)))
-        print("non-included labels in glove embedding:")
-        for key, value in not_included_dict.items() :
-            print (key)
-        #save to file system if vocabulary of words is not exists.
-        if not os.path.exists(cache_path):
-            with open(cache_path, 'ab') as data_f:
-                pickle.dump(result, data_f)
-    return result
     
 def create_voabulary(word2vec_model_path,name_scope=''):
     cache_path ='../cache_vocabulary_label_pik/'+ name_scope + "_word_voabulary.pik"
@@ -171,8 +102,8 @@ def create_voabulary(word2vec_model_path,name_scope=''):
                 pickle.dump((vocabulary_word2index,vocabulary_index2word), data_f)
     return vocabulary_word2index,vocabulary_index2word
 
-# create vocabulary of lables. label is sorted. 1 is high frequency, 2 is low frequency.
-def create_voabulary_label(voabulary_label,name_scope='',use_seq2seq=False):
+# create vocabulary of labels. label is sorted. 1 is high frequency, 2 is low frequency.
+def create_voabulary_label(voabulary_label,name_scope='',use_seq2seq=False,label_freq_th=0):
     print("create_voabulary_label_sorted.started.traning_data_path:",voabulary_label)
     cache_path ='../cache_vocabulary_label_pik/'+ name_scope + "_label_voabulary.pik"
     if os.path.exists(cache_path):
@@ -214,9 +145,10 @@ def create_voabulary_label(voabulary_label,name_scope='',use_seq2seq=False):
                 count_value=vocabulary_label_count_dict[label]
                 print("label:",label,"count_value:",count_value)
                 countt=countt+count_value
-            indexx = i + 3 if use_seq2seq else i
-            vocabulary_word2index_label[label]=indexx
-            vocabulary_index2word_label[indexx]=label
+            if vocabulary_label_count_dict[label]>=label_freq_th:
+                indexx = i + 3 if use_seq2seq else i
+                vocabulary_word2index_label[label]=indexx
+                vocabulary_index2word_label[indexx]=label
         print("count top10:",countt)
 
         #save to file system if vocabulary of words is not exists.
@@ -297,9 +229,13 @@ def load_data_multilabel_new_title_abstract(vocabulary_word2index,vocabulary_wor
                 ys = y.replace('\n', '').split(" ")  # ys is a list
                 ys_index=[]
                 for y in ys:
-                    y_index = vocabulary_word2index_label[y]
-                    ys_index.append(y_index)
-                
+                    #y_index = vocabulary_word2index_label[y]
+                    #y_index = vocabulary_word2index_label.get(y,-1) # if not exist (due to lower frequency than label_freq_th), return -1
+                    if vocabulary_word2index_label.get(y,None) is not None:
+                        y_index = vocabulary_word2index_label[y]
+                        ys_index.append(y_index)
+                if ys_index == []: # if it is empty, due to no labels have their frequency above the threshold label_freq_th.
+                    continue
                 # truncating the label by keep_label_percent    
                 ys_index_missing = ys_index
                 if i<2:
@@ -375,6 +311,7 @@ def load_data_multilabel_new_k_fold(vocabulary_word2index,vocabulary_word2index_
     Y_decoder_input=[] #ADD 2017-06-15
     for i, line in enumerate(lines):
         x, y = line.split('__label__') #x='w17314 w5521 w7729 w767 w10147 w111'
+        #print('test',x)
         x_title,x = x.split('__abstract__') # here split title (x_title) from abstract (x)
         y=y.strip().replace('\n','')
         x = x.strip()
@@ -417,9 +354,13 @@ def load_data_multilabel_new_k_fold(vocabulary_word2index,vocabulary_word2index_
                 ys = y.replace('\n', '').split(" ")  # ys is a list
                 ys_index=[]
                 for y in ys:
-                    y_index = vocabulary_word2index_label[y]
-                    ys_index.append(y_index)
-                
+                    if vocabulary_word2index_label.get(y,None) is not None:
+                        y_index = vocabulary_word2index_label[y]
+                        ys_index.append(y_index)
+                    #y_index = vocabulary_word2index_label[y]
+                    #ys_index.append(y_index)
+                if ys_index == []: # if it is empty, due to no labels have their frequency above the threshold label_freq_th.
+                    continue
                 # truncating the label by keep_label_percent    
                 ys_index_missing = ys_index
                 if i<2:
