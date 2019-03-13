@@ -25,7 +25,7 @@ The preprint of this paper will be available by the end of March.
 * ```./cache_vocabulary_label_pik``` stores the cached .pik files about vocabularies and labels
 
 # Quick Start
-The files under ```./dataset```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from [will update the link]. For the format of dataset, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder.
+The files under ```./dataset```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from OneDrive[https://1drv.ms/u/s!AlvsB_ZEXPkijP1_mufUWbz8rCVoEA] or Baidu Drive[]. For the format of dataset, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder.
 
 To train with the bibsonomy dataset
 ```
