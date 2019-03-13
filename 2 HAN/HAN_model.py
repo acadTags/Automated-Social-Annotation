@@ -1,3 +1,7 @@
+# partly adapted from the https://github.com/brightmart/text_classification/tree/master/a05_HierarchicalAttentionNetwork
+
+# last updated: 13 March 2019
+
 # -*- coding: utf-8 -*-
 # HierarchicalAttention: 1.Word Encoder. 2.Word Attention. 3.Sentence Encoder 4.Sentence Attention 5.linear classifier. 2017-06-13
 import tensorflow as tf
@@ -55,13 +59,13 @@ class HAN:
                 if self.lambda_sub == 0:
                     self.loss_val = self.loss_multilabel() # without any semantic regulariser, no j_sim or j_sub
                 else:
-                    self.loss_val = self.loss_multilabel_onto_new_8(self.label_sub_matrix); # using j_sub only
+                    self.loss_val = self.loss_multilabel_onto_new_sub(self.label_sub_matrix); # using j_sub only
             else:
                 if self.lambda_sub == 0:
                     # using j_sim only
-                    self.loss_val = self.loss_multilabel_onto_new_2(self.label_sim_matrix)
+                    self.loss_val = self.loss_multilabel_onto_new_sim(self.label_sim_matrix)
                 else:
-                    self.loss_val = self.loss_multilabel_onto_new_7(self.label_sim_matrix,self.label_sub_matrix)
+                    self.loss_val = self.loss_multilabel_onto_new_simsub(self.label_sim_matrix,self.label_sub_matrix)
         else:
             print("going to use single label loss.")
             self.loss_val = self.loss()
@@ -91,7 +95,9 @@ class HAN:
             self.recall = tf.reduce_mean(tf.div(tp,t))
         
         self.training_loss = tf.summary.scalar("train_loss_per_batch",self.loss_val)
+        self.training_loss_per_epoch = tf.summary.scalar("train_loss_per_epoch",self.loss_val)
         self.validation_loss = tf.summary.scalar("validation_loss_per_batch",self.loss_val)
+        self.validation_loss_per_epoch = tf.summary.scalar("validation_loss_per_epoch",self.loss_val)
         self.writer = tf.summary.FileWriter("./logs")
     
     # need to check carefully: to avoid non-use weights.
@@ -152,8 +158,7 @@ class HAN:
             #print(self.context_vecotor_word.name)
             self.context_vecotor_sentence = tf.get_variable("what_is_the_informative_sentence",
                                                             shape=[self.hidden_size * 2], initializer=self.initializer)
-                                                            
-    # very nice representation: I can generally understand it, but so far I cannot preogram this from scratch.    
+                                                               
     def attention_word_level(self, hidden_state):
         """
         input1:self.hidden_state: hidden_state:list,len:sentence_length,element:[batch_size*num_sentences,hidden_size*2]
@@ -317,13 +322,13 @@ class HAN:
             losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch
             self.loss_ce = tf.reduce_mean(losses)  # shape=().   average loss in the batch
             self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda #12 loss
-            self.onto_loss = tf.constant(0., dtype=tf.float32)
+            self.sim_loss = tf.constant(0., dtype=tf.float32)
             self.sub_loss = tf.constant(0., dtype=tf.float32)
             loss = self.loss_ce + self.l2_losses
         return loss
     
-    # sim-loss only
-    def loss_multilabel_onto_new_2(self, label_sim_matrix, l2_lambda=0.0001):
+    # L_sim only
+    def loss_multilabel_onto_new_sim(self, label_sim_matrix, l2_lambda=0.0001):
     # here we will experiment with different value of onto_lambda.
         # original, embedding 100dim, 57.2% (f-measure@11)
         # lambda2 = 0.0001, embedding 100dim, 56.9% (f-measure@11)
@@ -357,18 +362,15 @@ class HAN:
             #vec_diff=tf.multiply(vec_diff,co_label_mat_batch) # using only tag co-occurrence 
             vec_final=tf.reduce_sum(vec_diff)/2 # vec_diff is symmetric
             #vec_final=tf.reduce_sum(vec_diff)/2/self.num_classes/self.num_classes # vec_diff is symmetric
-            self.onto_loss=(vec_final/self.batch_size)*self.lambda_sim
+            self.sim_loss=(vec_final/self.batch_size)*self.lambda_sim
             
             self.sub_loss = tf.constant(0., dtype=tf.float32)
-            loss = self.loss_ce + self.l2_losses + self.onto_loss
+            loss = self.loss_ce + self.l2_losses + self.sim_loss
         return loss
     
-    # the original j_sim <loss_multilabel_onto_new_2> with J_sub 
-    # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hypernym of T_k.
-    def loss_multilabel_onto_new_7(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001): #*3#0.00001 #TODO 0.0001#this loss function is for multi-label classification # the onto_lambda may need to tune further.
-    # here we will experiment with different value of onto_lambda.
-        # original, embedding 100dim, 57.2% (f-measure@11)
-        # lambda2 = 0.0001, embedding 100dim, 56.9% (f-measure@11)
+    # the original L_sim with L_sub 
+    # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hyponym of T_k.
+    def loss_multilabel_onto_new_simsub(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
             # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
@@ -399,7 +401,7 @@ class HAN:
             #vec_diff=tf.multiply(vec_diff,co_label_mat_batch) # using only tag co-occurrence 
             vec_final=tf.reduce_sum(vec_diff)/2 # vec_diff is symmetric
             #vec_final=tf.reduce_sum(vec_diff)/2/self.num_classes/self.num_classes # vec_diff is symmetric
-            self.onto_loss=(vec_final/self.batch_size)*self.lambda_sim
+            self.sim_loss=(vec_final/self.batch_size)*self.lambda_sim
             
             # the sub-loss after sigmoid 
             pred = tf.round(sig_output)
@@ -407,14 +409,11 @@ class HAN:
             sub_loss = tf.multiply(pred_mat,label_sub_matrix)
             self.sub_loss = self.lambda_sub * tf.reduce_sum(sub_loss) / 2. / self.batch_size
             
-            loss = self.loss_ce + self.l2_losses + self.onto_loss + self.sub_loss
+            loss = self.loss_ce + self.l2_losses + self.sim_loss + self.sub_loss
         return loss
     
-    # j_sub only    
-    def loss_multilabel_onto_new_8(self, label_sub_matrix, l2_lambda=0.0001): #*3#0.00001 #TODO 0.0001#this loss function is for multi-label classification # the onto_lambda may need to tune further.
-    # here we will experiment with different value of onto_lambda.
-        # original, embedding 100dim, 57.2% (f-measure@11)
-        # lambda2 = 0.0001, embedding 100dim, 56.9% (f-measure@11)
+    # L_sub only    
+    def loss_multilabel_onto_new_sub(self, label_sub_matrix, l2_lambda=0.0001): 
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
             # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
@@ -440,7 +439,7 @@ class HAN:
             sub_loss = tf.multiply(pred_mat,label_sub_matrix)
             self.sub_loss = self.lambda_sub * tf.reduce_sum(sub_loss) / 2. / self.batch_size
             
-            self.onto_loss = tf.constant(0., dtype=tf.float32)
+            self.sim_loss = tf.constant(0., dtype=tf.float32)
             loss = self.loss_ce + self.l2_losses + self.sub_loss
         return loss
 
