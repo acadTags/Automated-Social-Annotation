@@ -1,6 +1,6 @@
 # Datasets
 
-The files under ```./dataset```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from [OneDrive](https://1drv.ms/u/s!AlvsB_ZEXPkijP1_mufUWbz8rCVoEA) or [Baidu Drive](https://pan.baidu.com/s/1bu7hD8-nvB_pOzrMfCebFw)```password:f5fe```.
+The cleaned and/or sample data files under ```./datasets``` can be downloaded from [OneDrive](https://1drv.ms/u/s!AlvsB_ZEXPkijP1_mufUWbz8rCVoEA) or [Baidu Drive](https://pan.baidu.com/s/1bu7hD8-nvB_pOzrMfCebFw)```password:f5fe```.
 
 This folder contains dataset files:
 * For the Bibsonomy dataset
