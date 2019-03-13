@@ -4,8 +4,7 @@ Joint Multi-label Attention Network (JMAN) is a neural network model for documen
 This tool is the source code for the proposed method reported in the paper titled
 * Joint Multi-label Attention Network for Social Text Annotation, NAACL-19
 
-The program is being updated continously.
-The preprint of this paper will be available by the end of March.
+The preprint of this paper will be available soon.
 
 # Requirements
 * Python 3.6.*
@@ -25,7 +24,7 @@ The preprint of this paper will be available by the end of March.
 * ```./cache_vocabulary_label_pik``` stores the cached .pik files about vocabularies and labels
 
 # Quick Start
-The files under ```./dataset```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from OneDrive[https://1drv.ms/u/s!AlvsB_ZEXPkijP1_mufUWbz8rCVoEA] or Baidu Drive[]. For the format of dataset, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder.
+The files under ```./dataset```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from [OneDrive](https://1drv.ms/u/s!AlvsB_ZEXPkijP1_mufUWbz8rCVoEA) or [Baidu Drive](). For the format of dataset, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder.
 
 To train with the bibsonomy dataset
 ```
