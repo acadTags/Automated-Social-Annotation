@@ -1,3 +1,7 @@
+# partly adapted from the https://github.com/brightmart/text_classification/tree/master/a03_TextRNN
+
+# last updated: 13 March 2019
+
 # -*- coding: utf-8 -*-
 #training the model.
 #process--->1.load data(X:list of lint,y:int). 2.create session. 3.feed data. 4.training (5.validation) ,(6.prediction)
@@ -30,54 +34,46 @@ start_time = time.time()
 #configuration
 FLAGS=tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string("dataset","bibsonomy-clean","dataset to chose") # two options: "bibsonomy-clean" and "zhihu-sample"
-#tf.app.flags.DEFINE_string("dataset","zhihu-sample","dataset to chose") # two options: "bibsonomy-clean" and "zhihu-sample"
 
 tf.app.flags.DEFINE_float("learning_rate",0.01,"learning rate") #TODO 0.01
-tf.app.flags.DEFINE_integer("batch_size", 1024, "Batch size for training/evaluating.") #批处理的大小 32-->128 #TODO
-tf.app.flags.DEFINE_integer("decay_steps", 6000, "how many steps before decay learning rate.") #6000批处理的大小 32-->128
-tf.app.flags.DEFINE_float("decay_rate", 1.0, "Rate of decay for learning rate.") #0.87一次衰减多少
+tf.app.flags.DEFINE_integer("batch_size", 1024, "Batch size for training/evaluating.")
+tf.app.flags.DEFINE_integer("decay_steps", 6000, "how many steps before decay learning rate.")
+tf.app.flags.DEFINE_float("decay_rate", 1.0, "Rate of decay for learning rate.")
 tf.app.flags.DEFINE_string("ckpt_dir","checkpoint_hier_atten_title4/","checkpoint location for the model")
 tf.app.flags.DEFINE_integer("sequence_length",300,"max sentence length")
 tf.app.flags.DEFINE_integer("embed_size",100,"embedding size")
 tf.app.flags.DEFINE_boolean("is_training",True,"is traning.true:tranining,false:testing/inference")
 tf.app.flags.DEFINE_integer("num_epochs",100,"number of epochs to run.")
-tf.app.flags.DEFINE_integer("validate_every", 1, "Validate every validate_every epochs.") #每10轮做一次验证
-tf.app.flags.DEFINE_integer("validate_step", 1000, "how many step to validate.") #1500做一次检验 TODO [this validation is also for decaying the learning rate based on the evaluation loss]
+tf.app.flags.DEFINE_integer("validate_every", 1, "Validate every validate_every epochs.")
+tf.app.flags.DEFINE_integer("validate_step", 1000, "how many step to validate.") #[this validation is also for decaying the learning rate based on the evaluation loss]
 tf.app.flags.DEFINE_boolean("use_embedding",True,"whether to use embedding or not.")
 tf.app.flags.DEFINE_float("label_sim_threshold",0,"similarity value below this threshold will be set as 0.")
 tf.app.flags.DEFINE_float("lambda_sim",0,"the lambda for sim-loss.")
 tf.app.flags.DEFINE_float("lambda_sub",0,"the lambda for sub-loss.")
 #tf.app.flags.DEFINE_string("cache_path","text_cnn_checkpoint/data_cache.pik","checkpoint location for the model")
-#train-zhihu4-only-title-all.txt
 
 #for simulating missing labels
 tf.app.flags.DEFINE_float("keep_label_percent",1,"the percentage of labels in each instance of the training data to be randomly reserved, the rest labels are dropped to simulate the missing label scenario.")
 
-
 #for both tuning and final testing
-tf.app.flags.DEFINE_string("training_data_path_bib","../datasets/bibsonomy_preprocessed_merged.txt","path of traning data.") # for bibsonomy dataset
+tf.app.flags.DEFINE_string("training_data_path_bib","../datasets/bibsonomy_preprocessed_merged_final.txt","path of traning data.") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("training_data_path_zhihu","../datasets/question_train_set_cleaned_150000.txt","path of traning data.") # for zhihu dataset
-tf.app.flags.DEFINE_string("training_data_path_sof","../datasets/stacksample_cleaned_title110000_th_10.txt","path of traning data.") # for sof dataset
 
-tf.app.flags.DEFINE_float("valid_portion",0.111,"dev set or test set portion") # this is only valid when kfold is -1, which means we hold out a fixed set for validation. 
+tf.app.flags.DEFINE_float("valid_portion",0.1,"dev set or test set portion") # this is only valid when kfold is -1, which means we hold out a fixed set for validation. If we set this as 0.1, then there will be 0.81 0.09 0.1 for train-valid-test split (same as the split of 10-fold cross-validation); if we set this as 0.111, then there will be 0.8 0.1 0.1 for train-valid-test split.
 tf.app.flags.DEFINE_float("test_portion",0.1,"held-out evaluation: test set portion")
 tf.app.flags.DEFINE_integer("kfold",10,"k-fold cross-validation") # if k is -1, then not using kfold cross-validation
 
 tf.app.flags.DEFINE_string("marking_id","","an marking_id (or group_id) for better marking: will show in the output filenames")
 
-tf.app.flags.DEFINE_string("word2vec_model_path_bib","../embeddings/whole-tit-abs.bin-100","word2vec's vocabulary and vectors for inputs")
+tf.app.flags.DEFINE_string("word2vec_model_path_bib","../embeddings/word-bib.bin-100","word2vec's vocabulary and vectors for inputs")
 tf.app.flags.DEFINE_string("word2vec_model_path_zhihu","../embeddings/word150000.bin-100","word2vec's vocabulary and vectors")
-tf.app.flags.DEFINE_string("word2vec_model_path_sof","../embeddings/word-sof-sample.bin-100","word2vec's vocabulary and vectors")
 
-tf.app.flags.DEFINE_string("emb_model_path_bib","../embeddings/tag-all-bib.bin-300","pre-trained model from bibsonomy labels")
+tf.app.flags.DEFINE_string("emb_model_path_bib","../embeddings/tag-all-bib-final.bin-300","pre-trained model from bibsonomy labels")
 tf.app.flags.DEFINE_string("emb_model_path_zhihu","../embeddings/tag_all.bin-300","pre-trained model from zhihu labels")
-tf.app.flags.DEFINE_string("emb_model_path_sof","../embeddings/tag-sof-all.bin-300","pre-trained model from sof labels")
-#tf.app.flags.DEFINE_string("glove_model_path","../embeddings/glove.6B.300d.txt","glove's pre-trained model for labels")
 
 tf.app.flags.DEFINE_string("kb_dbpedia_path","../knowledge_bases/bibsonomy_skos_withredir_pw_candidts_all_labelled.csv","labels matched to DBpedia skos and redir relations") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("kb_MCG_path","../knowledge_bases/bibsonomy_mcg5_pw_candidts_all_labelled.csv","labels matched to Microsoft Concept Graph relations") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("kb_zhihu","../knowledge_bases/zhihu_kb.csv","label relations for zhihu data") # for zhihu dataset
-tf.app.flags.DEFINE_string("kb_sof","../knowledge_bases/sof-mcg-kb.csv","label relations for sof data") # for zhihu dataset
 
 tf.app.flags.DEFINE_boolean("multi_label_flag",True,"use multi label or single label.")
 #tf.app.flags.DEFINE_integer("num_sentences", 10, "number of sentences in the document")
@@ -85,13 +81,13 @@ tf.app.flags.DEFINE_integer("hidden_size",100,"hidden size") # same as embedding
 tf.app.flags.DEFINE_boolean("weight_decay_testing",True,"weight decay based on validation data.") # decay the weight by half if validation loss increases.
 tf.app.flags.DEFINE_boolean("report_rand_pred",True,"report prediction for qualitative analysis")
 tf.app.flags.DEFINE_float("early_stop_lr",0.00002,"early stop point when learning rate is belwo is threshold") #0.00002
-tf.app.flags.DEFINE_float("ave_labels_per_doc",12.43,"average labels per document for bibsonomy dataset")
+tf.app.flags.DEFINE_float("ave_labels_per_doc",11.59,"average labels per document for bibsonomy dataset")
 tf.app.flags.DEFINE_integer("topk",5,"using top-k predicted labels for evaluation")
 
 #1.load data(X:list of lint,y:int). 2.create session. 3.feed data. 4.training (5.validation) ,(6.prediction)
 def main(_):
     #1.load data(X:list of lint,y:int).
-    #if os.path.exists(FLAGS.cache_path):  # 如果文件系统中存在，那么加载故事（词汇表索引化的）
+    #if os.path.exists(FLAGS.cache_path):  # 
     #    with open(FLAGS.cache_path, 'r') as data_f:
     #        trainX, trainY, testX, testY, vocabulary_index2word=pickle.load(data_f)
     #        vocab_size=len(vocabulary_index2word)
@@ -110,14 +106,14 @@ def main(_):
         
         #subsumption relations: using external knowledge bases
         #label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_dbpedia_path,name_scope='dbpedia');print('using DBpedia relations') #use_dbpedia
-        label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_MCG_path,name_scope='mcg');print('using MCG relations') # 101084
+        label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_MCG_path,name_scope='bib');print('using MCG relations') # 101084
         
         #configurations:
         FLAGS.batch_size = 128
         FLAGS.sequence_length = 300
-        FLAGS.ave_labels_per_doc = 12.43
-        FLAGS.lambda_sim = 0 # lambda1
-        FLAGS.lambda_sub = 0 # lambda2
+        FLAGS.ave_labels_per_doc = 11.59
+        #FLAGS.lambda_sim = 0 # lambda1
+        #FLAGS.lambda_sub = 0 # lambda2
         FLAGS.topk = 11
         
     elif FLAGS.dataset == "zhihu-sample":
@@ -137,31 +133,10 @@ def main(_):
         FLAGS.batch_size = 1024
         FLAGS.sequence_length = 100
         FLAGS.ave_labels_per_doc = 2.45
-        FLAGS.lambda_sim = 0 # lambda1
-        FLAGS.lambda_sub = 0 # lambda2
+        #FLAGS.lambda_sim = 0 # lambda1
+        #FLAGS.lambda_sub = 0 # lambda2
         FLAGS.topk = 2
     
-    elif FLAGS.dataset == "sof-sample":
-        word2vec_model_path = FLAGS.word2vec_model_path_sof
-        traning_data_path = FLAGS.training_data_path_sof
-        emb_model_path = FLAGS.emb_model_path_sof
-        
-        vocabulary_word2index_label,vocabulary_index2word_label = create_voabulary_label(voabulary_label=traning_data_path, name_scope=FLAGS.dataset + "-JMAN")
-        
-        #similarity relations: using self-trained label embedding
-        label_sim_mat = get_label_sim_matrix(vocabulary_index2word_label,emb_model_path,name_scope=FLAGS.dataset)
-        
-        #subsumption relations: using zhihu crowdsourced relations
-        label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_sof,name_scope='sof');print('using sof relations')
-        
-        #configurations:
-        FLAGS.batch_size = 1024
-        FLAGS.sequence_length = 300
-        FLAGS.ave_labels_per_doc = 2.64
-        FLAGS.lambda_sim = 0 # lambda1
-        FLAGS.lambda_sub = 0 # lambda2
-        FLAGS.topk = 3
-        #FLAGS.early_stop_lr = 0.003
     else:
         print("dataset unrecognisable")
         sys.exit()
@@ -278,10 +253,12 @@ def main(_):
                     feed_dict[model.label_sim_matrix]=label_sim_mat
                     feed_dict[model.label_sub_matrix]=label_sub_mat
                     # now we start training
-                    curr_summary_str,curr_loss,curr_acc,_=sess.run([model.training_loss,model.loss_val,model.accuracy,model.train_op],feed_dict)
+                    curr_summary_str,curr_summary_l_epoch,curr_loss,curr_acc,_=sess.run([model.training_loss,model.training_loss_per_epoch,model.loss_val,model.accuracy,model.train_op],feed_dict)
                             
                     curr_step=curr_step+1
                     model.writer.add_summary(curr_summary_str,curr_step)
+                    if counter==0:
+                        model.writer.add_summary(curr_summary_l_epoch,epoch) # this is the training loss per epoch
                     loss,counter,acc=loss+curr_loss,counter+1,acc+curr_acc
                     # output every 50 batches
                     if counter %50==0:
@@ -296,7 +273,7 @@ def main(_):
                             print(epoch, FLAGS.validate_step, FLAGS.batch_size) # here shows only when start being 0, the program goes under this condition. This is okay as our dataset is not too large.
                             #eval_loss, eval_acc = do_eval(sess, model, testX, testY, batch_size,vocabulary_index2word_label)
                             #eval_loss, eval_acc,eval_prec,eval_rec,eval_fmeasure = do_eval_multilabel(sess, model, tag_pair_matrix, label_sim_matrix, testX, testY, batch_size,vocabulary_index2word_label,epoch,number_labels_to_predict=11)
-                            eval_loss,_,_,_,_,_,_,_,_,_,_ = do_eval_multilabel_threshold(sess,model,label_sim_mat,label_sub_mat,validX,validY,batch_size,vocabulary_index2word,vocabulary_index2word_label,epoch,threshold=0.5,display_results_bool=False,record_to_tensorboard=False) # here we use validation data [not testing data!] # do not record this to tensorboard
+                            eval_loss,_,_,_,_,_,_,_,_,_,_ = do_eval_multilabel_threshold(sess,model,label_sim_mat,label_sub_mat,validX,validY,batch_size,vocabulary_index2word,vocabulary_index2word_label,epoch,threshold=0.5,display_results_bool=False,hamming_q=FLAGS.ave_labels_per_doc,top_number=FLAGS.topk,record_to_tensorboard=False) # here we use validation data [not testing data!] # do not record this to tensorboard
                             print("validation.part. previous_eval_loss:", previous_eval_loss,";current_eval_loss:", eval_loss)
                             #print("validation.part. previous_eval_fmeasure:", previous_eval_fmeasure,";current_eval_fmeasure:", eval_fmeasure)
                             if eval_loss > previous_eval_loss: #if loss is not decreasing
@@ -321,7 +298,7 @@ def main(_):
                         display_results_bool=True
                     else:
                         display_results_bool=False
-                    eval_loss,eval_acc_th,eval_prec_th,eval_rec_th,eval_fmeasure_th,eval_hamming_loss_th,eval_acc_topk,eval_prec_topk,eval_rec_topk,eval_fmeasure_topk,eval_hamming_loss_topk = do_eval_multilabel_threshold(sess,model,label_sim_mat,label_sub_mat,validX,validY,batch_size,vocabulary_index2word,vocabulary_index2word_label,epoch,threshold=0.5,display_results_bool=display_results_bool,record_to_tensorboard=True)
+                    eval_loss,eval_acc_th,eval_prec_th,eval_rec_th,eval_fmeasure_th,eval_hamming_loss_th,eval_acc_topk,eval_prec_topk,eval_rec_topk,eval_fmeasure_topk,eval_hamming_loss_topk = do_eval_multilabel_threshold(sess,model,label_sim_mat,label_sub_mat,validX,validY,batch_size,vocabulary_index2word,vocabulary_index2word_label,epoch,threshold=0.5,display_results_bool=display_results_bool,hamming_q=FLAGS.ave_labels_per_doc,top_number=FLAGS.topk,record_to_tensorboard=True)
                     print('lambda_sim', FLAGS.lambda_sim, 'lambda_sub', FLAGS.lambda_sub)
                     print("Bi-GRU==>Epoch %d Validation Loss:%.3f\tValidation Accuracy: %.3f\tValidation Hamming Loss: %.3f\tValidation Precision: %.3f\tValidation Recall: %.3f\tValidation F-measure: %.3f\tValidation Accuracy@k: %.3f\tValidation Hamming Loss@k: %.3f\tValidation Precision@k: %.3f\tValidation Recall@k: %.3f\tValidation F-measure@k: %.3f" % (epoch,eval_loss,eval_acc_th,eval_hamming_loss_th,eval_prec_th,eval_rec_th,eval_fmeasure_th,eval_acc_topk,eval_hamming_loss_topk,eval_prec_topk,eval_rec_topk,eval_fmeasure_topk))
                                             
@@ -335,13 +312,13 @@ def main(_):
             time_train[num_run] = time.time() - start_time_train # store the training time for this fold to the list time_train().
             
             # 5.report validation results
-            valid_loss[num_run], valid_acc_th[num_run],valid_prec_th[num_run],valid_rec_th[num_run],valid_fmeasure_th[num_run],valid_hamming_loss_th[num_run],valid_acc_topk[num_run],valid_prec_topk[num_run],valid_rec_topk[num_run],valid_fmeasure_topk[num_run],valid_hamming_loss_topk[num_run] = do_eval_multilabel_threshold(sess,model,label_sim_mat,label_sub_mat,validX,validY,batch_size,vocabulary_index2word,vocabulary_index2word_label,epoch,threshold=0.5,display_results_bool=True,record_to_tensorboard=False)
+            valid_loss[num_run], valid_acc_th[num_run],valid_prec_th[num_run],valid_rec_th[num_run],valid_fmeasure_th[num_run],valid_hamming_loss_th[num_run],valid_acc_topk[num_run],valid_prec_topk[num_run],valid_rec_topk[num_run],valid_fmeasure_topk[num_run],valid_hamming_loss_topk[num_run] = do_eval_multilabel_threshold(sess,model,label_sim_mat,label_sub_mat,validX,validY,batch_size,vocabulary_index2word,vocabulary_index2word_label,epoch,threshold=0.5,display_results_bool=True,hamming_q=FLAGS.ave_labels_per_doc,top_number=FLAGS.topk,record_to_tensorboard=False)
             print("Bi-GRU==>Run %d Validation results:%.3f\tValidation Accuracy: %.3f\tValidation Hamming Loss: %.3f\tValidation Precision: %.3f\tValidation Recall: %.3f\tValidation F-measure: %.3f\tValidation Accuracy@k: %.3f\tValidation Hamming Loss@k: %.3f\tValidation Precision@k: %.3f\tValidation Recall@k: %.3f\tValidation F-measure@k: %.3f" % (num_run,valid_loss[num_run],valid_acc_th[num_run],valid_hamming_loss_th[num_run],valid_prec_th[num_run],valid_rec_th[num_run],valid_fmeasure_th[num_run],valid_acc_topk[num_run],valid_hamming_loss_topk[num_run],valid_prec_topk[num_run],valid_rec_topk[num_run],valid_fmeasure_topk[num_run]))
             output_valid = output_valid + "\n" + "Bi-GRU==>Run %d Validation results Validation Loss:%.3f\tValidation Accuracy: %.3f\tValidation Hamming Loss: %.3f\tValidation Precision: %.3f\tValidation Recall: %.3f\tValidation F-measure: %.3f\tValidation Accuracy@k: %.3f\tValidation Hamming Loss@k: %.3f\tValidation Precision@k: %.3f\tValidation Recall@k: %.3f\tValidation F-measure@k: %.3f" % (num_run,valid_loss[num_run],valid_acc_th[num_run],valid_hamming_loss_th[num_run],valid_prec_th[num_run],valid_rec_th[num_run],valid_fmeasure_th[num_run],valid_acc_topk[num_run],valid_hamming_loss_topk[num_run],valid_prec_topk[num_run],valid_rec_topk[num_run],valid_fmeasure_topk[num_run]) + "\n" # also output the results of each run.
             output_csv_valid = output_csv_valid + "\n" + str(num_run) + "," + str(valid_loss[num_run]) + "," + str(valid_hamming_loss_th[num_run]) + "," + str(valid_acc_th[num_run]) + "," + str(valid_prec_th[num_run]) + "," + str(valid_rec_th[num_run]) + "," + str(valid_fmeasure_th[num_run]) + "," + str(valid_acc_topk[num_run]) + "," + str(valid_hamming_loss_topk[num_run]) + "," + str(valid_prec_topk[num_run]) + "," + str(valid_rec_topk[num_run]) + "," + str(valid_fmeasure_topk[num_run])
             
             # 6.here we use the testing data, to report testing results
-            test_loss[num_run], test_acc_th[num_run],test_prec_th[num_run],test_rec_th[num_run],test_fmeasure_th[num_run],test_hamming_loss_th[num_run],test_acc_topk[num_run],test_prec_topk[num_run],test_rec_topk[num_run],test_fmeasure_topk[num_run],test_hamming_loss_topk[num_run] = do_eval_multilabel_threshold(sess,model,label_sim_mat,label_sub_mat,testX,testY,batch_size,vocabulary_index2word,vocabulary_index2word_label,epoch,threshold=0.5,display_results_bool=True,record_to_tensorboard=False)
+            test_loss[num_run], test_acc_th[num_run],test_prec_th[num_run],test_rec_th[num_run],test_fmeasure_th[num_run],test_hamming_loss_th[num_run],test_acc_topk[num_run],test_prec_topk[num_run],test_rec_topk[num_run],test_fmeasure_topk[num_run],test_hamming_loss_topk[num_run] = do_eval_multilabel_threshold(sess,model,label_sim_mat,label_sub_mat,testX,testY,batch_size,vocabulary_index2word,vocabulary_index2word_label,epoch,threshold=0.5,display_results_bool=True,hamming_q=FLAGS.ave_labels_per_doc,top_number=FLAGS.topk,record_to_tensorboard=False)
             print("Bi-GRU==>Run %d Test results Test Loss:%.3f\tValidation Accuracy: %.3f\tValidation Hamming Loss: %.3f\tValidation Precision: %.3f\tValidation Recall: %.3f\tValidation F-measure: %.3f\tValidation Accuracy@k: %.3f\tValidation Hamming Loss@k: %.3f\tValidation Precision@k: %.3f\tValidation Recall@k: %.3f\tValidation F-measure@k: %.3f" % (num_run,test_loss[num_run],test_acc_th[num_run],test_hamming_loss_th[num_run],test_prec_th[num_run],test_rec_th[num_run],test_fmeasure_th[num_run],test_acc_topk[num_run],test_hamming_loss_topk[num_run],test_prec_topk[num_run],test_rec_topk[num_run],test_fmeasure_topk[num_run]))
             output_test = output_test + "\n" + "Bi-GRU==>Run %d Test results Validation Loss:%.3f\tValidation Accuracy: %.3f\tValidation Hamming Loss: %.3f\tValidation Precision: %.3f\tValidation Recall: %.3f\tValidation F-measure: %.3f\tValidation Accuracy@k: %.3f\tValidation Hamming Loss@k: %.3f\tValidation Precision@k: %.3f\tValidation Recall@k: %.3f\tValidation F-measure@k: %.3f" % (num_run,test_loss[num_run],test_acc_th[num_run],test_hamming_loss_th[num_run],test_prec_th[num_run],test_rec_th[num_run],test_fmeasure_th[num_run],test_acc_topk[num_run],test_hamming_loss_topk[num_run],test_prec_topk[num_run],test_rec_topk[num_run],test_fmeasure_topk[num_run]) + "\n" # also output the results of each run.
             output_csv_test = output_csv_test + "\n" + str(num_run) + "," + str(test_loss[num_run]) + "," + str(test_hamming_loss_th[num_run]) + "," + str(test_acc_th[num_run]) +  "," + str(test_prec_th[num_run]) + "," + str(test_rec_th[num_run]) + "," + str(test_fmeasure_th[num_run]) + "," + str(test_acc_topk[num_run]) + "," + str(test_hamming_loss_topk[num_run]) + "," + str(test_prec_topk[num_run]) + "," + str(test_rec_topk[num_run]) + "," + str(test_fmeasure_topk[num_run])
@@ -383,18 +360,19 @@ def main(_):
     max_valid_rec_topk = max(valid_rec_topk)
     max_valid_fmeasure_topk = max(valid_fmeasure_topk)
     max_valid_hamming_loss_topk = max(valid_hamming_loss_topk)
-    
-    std_valid_loss = statistics.stdev(valid_loss)
-    std_valid_acc_th = statistics.stdev(valid_acc_th) # to change
-    std_valid_prec_th = statistics.stdev(valid_prec_th)
-    std_valid_rec_th = statistics.stdev(valid_rec_th)
-    std_valid_fmeasure_th = statistics.stdev(valid_fmeasure_th)
-    std_valid_hamming_loss_th = statistics.stdev(valid_hamming_loss_th)
-    std_valid_acc_topk = statistics.stdev(valid_acc_topk)
-    std_valid_prec_topk = statistics.stdev(valid_prec_topk)
-    std_valid_rec_topk = statistics.stdev(valid_rec_topk)
-    std_valid_fmeasure_topk = statistics.stdev(valid_fmeasure_topk)
-    std_valid_hamming_loss_topk = statistics.stdev(valid_hamming_loss_topk)
+
+    if FLAGS.kfold != -1:
+        std_valid_loss = statistics.stdev(valid_loss)
+        std_valid_acc_th = statistics.stdev(valid_acc_th) # to change
+        std_valid_prec_th = statistics.stdev(valid_prec_th)
+        std_valid_rec_th = statistics.stdev(valid_rec_th)
+        std_valid_fmeasure_th = statistics.stdev(valid_fmeasure_th)
+        std_valid_hamming_loss_th = statistics.stdev(valid_hamming_loss_th)
+        std_valid_acc_topk = statistics.stdev(valid_acc_topk)
+        std_valid_prec_topk = statistics.stdev(valid_prec_topk)
+        std_valid_rec_topk = statistics.stdev(valid_rec_topk)
+        std_valid_fmeasure_topk = statistics.stdev(valid_fmeasure_topk)
+        std_valid_hamming_loss_topk = statistics.stdev(valid_hamming_loss_topk)
     
     final_valid_loss = sum(valid_loss)/num_runs # final is average
     final_valid_acc_th = sum(valid_acc_th)/num_runs
@@ -438,7 +416,7 @@ def main(_):
     max_test_fmeasure_topk = max(test_fmeasure_topk)
     max_test_hamming_loss_topk = max(test_hamming_loss_topk)
     
-    if len(test_loss) > 1:
+    if FLAGS.kfold != -1:
         std_test_loss = statistics.stdev(test_loss)
         std_test_acc_th = statistics.stdev(test_acc_th) # to change
         std_test_prec_th = statistics.stdev(test_prec_th)
@@ -473,12 +451,16 @@ def main(_):
     #setting = ""
     #for key, value in setting_dict.items():
     #    setting = setting + key + ": " + str(value) + '\n'
-    #setting:batch_size,embed_size,label_sim_threshold,lambda_sim,lambda_l1sig,weight_decay_testing
-    setting = "batch_size: " + str(FLAGS.batch_size) + "\nembed_size: " + str(FLAGS.embed_size) + "\nvalidate_step: " + str(FLAGS.validate_step) + "\nlambda_sim: " + str(FLAGS.lambda_sim) + "\nlambda_sub: " + str(FLAGS.lambda_sub) + "\nnum_epochs: " + str(FLAGS.num_epochs) + "\nkeep_label_percent: " + str(FLAGS.keep_label_percent) + "\nweight_decay_testing: " + str(FLAGS.weight_decay_testing)
+    #setting:batch_size,embed_size,label_sim_threshold,lambda_sim,weight_decay_testing
+    setting = "batch_size: " + str(FLAGS.batch_size) + "\nembed_size: " + str(FLAGS.embed_size) + "\nvalidate_step: " + str(FLAGS.validate_step) + "\nlabel_sim_threshold: " + str(FLAGS.label_sim_threshold) + "\nlambda_sim: " + str(FLAGS.lambda_sim) + "\nlambda_sub: " + str(FLAGS.lambda_sub) + "\nnum_epochs: " + str(FLAGS.num_epochs) + "\nkeep_label_percent: " + str(FLAGS.keep_label_percent) + "\nweight_decay_testing: " + str(FLAGS.weight_decay_testing) + "\nearly_stop_lr: " + str(FLAGS.early_stop_lr)
     print("--- The whole program took %s seconds ---" % (time.time() - start_time))
     time_used = "--- The whole program took %s seconds ---" % (time.time() - start_time)
-    print("--- The average training took %s ± %s seconds ---" % (sum(time_train)/num_runs,statistics.stdev(time_train)))
-    average_time_train = "--- The average training took %s ± %s seconds ---" % (sum(time_train)/num_runs,statistics.stdev(time_train))
+    if FLAGS.kfold != -1:
+        print("--- The average training took %s ± %s seconds ---" % (sum(time_train)/num_runs,statistics.stdev(time_train)))
+        average_time_train = "--- The average training took %s ± %s seconds ---" % (sum(time_train)/num_runs,statistics.stdev(time_train))
+    else:
+        print("--- The average training took %s ± %s seconds ---" % (sum(time_train)/num_runs,0))
+        average_time_train = "--- The average training took %s ± %s seconds ---" % (sum(time_train)/num_runs,0)
 
     # output setting configuration, results, prediction and time used
     output_to_file('l2 ' + str(FLAGS.lambda_sim) + " l3 " + str(FLAGS.lambda_sub) + ' th' + str(FLAGS.label_sim_threshold) + ' keep_label_percent' + str(FLAGS.keep_label_percent) + ' kfold' + str(FLAGS.kfold) + ' b_s' + str(FLAGS.batch_size) + ' gp_id' + str(FLAGS.marking_id) + '.txt',setting + '\n' + output_valid + '\n' + output_test + '\n' + prediction_str + '\n' + time_used + '\n' + average_time_train)
@@ -548,11 +530,13 @@ def do_eval_multilabel_threshold(sess,modelToEval,label_sim_mat,label_sub_mat,ev
         else:
             feed_dict[modelToEval.input_y_multilabel] = evalY[start:end]
         #curr_eval_loss, logits,curr_eval_acc= sess.run([modelToEval.loss_val,modelToEval.logits,modelToEval.accuracy],feed_dict)#curr_eval_acc--->modelToEval.accuracy
-        curr_summary_str,curr_eval_loss,logits= sess.run([modelToEval.validation_loss,modelToEval.loss_val,modelToEval.logits],feed_dict)#curr_eval_acc--->modelToEval.accuracy
-        eval_counter=eval_counter+1
+        curr_summary_str,curr_summary_l_epoch,curr_eval_loss,logits= sess.run([modelToEval.validation_loss,modelToEval.validation_loss_per_epoch,modelToEval.loss_val,modelToEval.logits],feed_dict)#curr_eval_acc--->modelToEval.accuracy
         if record_to_tensorboard:
             eval_step = eval_step + 1
             modelToEval.writer.add_summary(curr_summary_str,eval_step)
+            if eval_counter==0:
+                modelToEval.writer.add_summary(curr_summary_l_epoch,epoch)
+        eval_counter=eval_counter+1
         #print(type(logits))
         #n=0
         #print(len(logits)) #=batch_size

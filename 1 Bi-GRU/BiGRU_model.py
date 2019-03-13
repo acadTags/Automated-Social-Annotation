@@ -1,3 +1,7 @@
+# partly adapted from the https://github.com/brightmart/text_classification/tree/master/a03_TextRNN
+
+# last updated: 13 March 2019
+
 # -*- coding: utf-8 -*-
 import tensorflow as tf
 from tensorflow.contrib import rnn
@@ -8,7 +12,7 @@ class BiGRU:
                  vocab_size,embed_size,is_training,lambda_sim=0.00001,lambda_sub=0,initializer=tf.random_normal_initializer(stddev=0.1),clip_gradients=5.0,multi_label_flag=True): #initializer=tf.random_normal_initializer(stddev=0.1)
         """init all hyperparameter here"""
         # set hyperparamter
-        self.num_sentences = 1 # this is used in 
+        self.num_sentences = 1
         self.num_classes = num_classes
         self.batch_size = batch_size
         self.sequence_length=sequence_length
@@ -50,13 +54,13 @@ class BiGRU:
                 if self.lambda_sub == 0:
                     self.loss_val = self.loss_multilabel() # without any semantic regulariser, no j_sim or j_sub
                 else:
-                    self.loss_val = self.loss_multilabel_onto_new_8(self.label_sub_matrix); # using j_sub only
+                    self.loss_val = self.loss_multilabel_onto_new_sub(self.label_sub_matrix); # using j_sub only
             else:
                 if self.lambda_sub == 0:
                     # using j_sim only
-                    self.loss_val = self.loss_multilabel_onto_new_2(self.label_sim_matrix)
+                    self.loss_val = self.loss_multilabel_onto_new_sim(self.label_sim_matrix)
                 else:
-                    self.loss_val = self.loss_multilabel_onto_new_7(self.label_sim_matrix,self.label_sub_matrix)
+                    self.loss_val = self.loss_multilabel_onto_new_simsub(self.label_sim_matrix,self.label_sub_matrix)
         else:
             print("going to use single label loss.")
             self.loss_val = self.loss()
@@ -86,9 +90,11 @@ class BiGRU:
             self.recall = tf.reduce_mean(tf.div(tp,t))
         
         self.training_loss = tf.summary.scalar("train_loss_per_batch",self.loss_val)
+        self.training_loss_per_epoch = tf.summary.scalar("train_loss_per_epoch",self.loss_val)
         self.validation_loss = tf.summary.scalar("validation_loss_per_batch",self.loss_val)
+        self.validation_loss_per_epoch = tf.summary.scalar("validation_loss_per_epoch",self.loss_val)
         self.writer = tf.summary.FileWriter("./logs")
-
+        
     def instantiate_weights(self):
         """define all weights here"""
         with tf.name_scope("embedding"): # embedding matrix
@@ -171,7 +177,7 @@ class BiGRU:
             loss = loss + l2_losses
         return loss
     
-    # loss for multi-label classification (JMAN-s)
+    # loss for multi-label classification
     def loss_multilabel(self, l2_lambda=0.0001):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
@@ -185,16 +191,13 @@ class BiGRU:
             losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch
             self.loss_ce = tf.reduce_mean(losses)  # shape=().   average loss in the batch
             self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda #12 loss
-            self.onto_loss = tf.constant(0., dtype=tf.float32)
+            self.sim_loss = tf.constant(0., dtype=tf.float32)
             self.sub_loss = tf.constant(0., dtype=tf.float32)
             loss = self.loss_ce + self.l2_losses
         return loss
     
-    # sim-loss only
+    # L_sim only
     def loss_multilabel_onto_new_2(self, label_sim_matrix, l2_lambda=0.0001):
-    # here we will experiment with different value of onto_lambda.
-        # original, embedding 100dim, 57.2% (f-measure@11)
-        # lambda2 = 0.0001, embedding 100dim, 56.9% (f-measure@11)
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
             # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
@@ -225,14 +228,14 @@ class BiGRU:
             #vec_diff=tf.multiply(vec_diff,co_label_mat_batch) # using only tag co-occurrence 
             vec_final=tf.reduce_sum(vec_diff)/2 # vec_diff is symmetric
             #vec_final=tf.reduce_sum(vec_diff)/2/self.num_classes/self.num_classes # vec_diff is symmetric
-            self.onto_loss=(vec_final/self.batch_size)*self.lambda_sim
+            self.sim_loss=(vec_final/self.batch_size)*self.lambda_sim
             
             self.sub_loss = tf.constant(0., dtype=tf.float32)
-            loss = self.loss_ce + self.l2_losses + self.onto_loss
+            loss = self.loss_ce + self.l2_losses + self.sim_loss
         return loss
     
-    # the original j_sim <loss_multilabel_onto_new_2> with J_sub 
-    # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hypernym of T_k.
+    # the original L_sim with L_sub 
+    # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hyponym of T_k.
     def loss_multilabel_onto_new_7(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001): #*3#0.00001 #TODO 0.0001#this loss function is for multi-label classification # the onto_lambda may need to tune further.
     # here we will experiment with different value of onto_lambda.
         # original, embedding 100dim, 57.2% (f-measure@11)
@@ -267,7 +270,7 @@ class BiGRU:
             #vec_diff=tf.multiply(vec_diff,co_label_mat_batch) # using only tag co-occurrence 
             vec_final=tf.reduce_sum(vec_diff)/2 # vec_diff is symmetric
             #vec_final=tf.reduce_sum(vec_diff)/2/self.num_classes/self.num_classes # vec_diff is symmetric
-            self.onto_loss=(vec_final/self.batch_size)*self.lambda_sim
+            self.sim_loss=(vec_final/self.batch_size)*self.lambda_sim
             
             # the sub-loss after sigmoid 
             pred = tf.round(sig_output)
@@ -275,11 +278,11 @@ class BiGRU:
             sub_loss = tf.multiply(pred_mat,label_sub_matrix)
             self.sub_loss = self.lambda_sub * tf.reduce_sum(sub_loss) / 2. / self.batch_size
             
-            loss = self.loss_ce + self.l2_losses + self.onto_loss + self.sub_loss
+            loss = self.loss_ce + self.l2_losses + self.sim_loss + self.sub_loss
         return loss
     
-    # j_sub only    
-    def loss_multilabel_onto_new_8(self, label_sub_matrix, l2_lambda=0.0001): #*3#0.00001 #TODO 0.0001#this loss function is for multi-label classification # the onto_lambda may need to tune further.
+    # L_sub only    
+    def loss_multilabel_onto_new_sub(self, label_sub_matrix, l2_lambda=0.0001): #*3#0.00001 #TODO 0.0001#this loss function is for multi-label classification # the onto_lambda may need to tune further.
     # here we will experiment with different value of onto_lambda.
         # original, embedding 100dim, 57.2% (f-measure@11)
         # lambda2 = 0.0001, embedding 100dim, 56.9% (f-measure@11)
@@ -308,7 +311,7 @@ class BiGRU:
             sub_loss = tf.multiply(pred_mat,label_sub_matrix)
             self.sub_loss = self.lambda_sub * tf.reduce_sum(sub_loss) / 2. / self.batch_size
             
-            self.onto_loss = tf.constant(0., dtype=tf.float32)
+            self.sim_loss = tf.constant(0., dtype=tf.float32)
             loss = self.loss_ce + self.l2_losses + self.sub_loss
         return loss
 
@@ -378,5 +381,5 @@ class BiGRU:
         for time_step, Xt in enumerate(embedded_words_squeeze):
             h_t = self.gru_single_step_word_level(Xt, h_t)
             h_t_backward_list.append(h_t)
-        h_t_backward_list.reverse() #ADD 2017.06.14
+        h_t_backward_list.reverse()
         return h_t_backward_list
