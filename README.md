@@ -2,7 +2,7 @@
 Joint Multi-label Attention Network (JMAN) is a neural network model for document annotation with social tags.
 
 This tool is the source code for the proposed method reported in the paper titled
-* Joint Multi-label Attention Network for Social Text Annotation, NAACL-19
+* Joint Multi-label Attention Network for Social Text Annotation, NAACL-HLT 2019
 
 The preprint of this paper will be available soon.
 
@@ -24,7 +24,7 @@ The preprint of this paper will be available soon.
 * ```./cache_vocabulary_label_pik``` stores the cached .pik files about vocabularies and labels
 
 # Quick Start
-The files under ```./dataset```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from [OneDrive](https://1drv.ms/u/s!AlvsB_ZEXPkijP1_mufUWbz8rCVoEA) or [Baidu Drive](https://pan.baidu.com/s/1bu7hD8-nvB_pOzrMfCebFw)(password:f5fe). For the format of dataset, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder.
+The files under ```./dataset```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from [OneDrive](https://1drv.ms/u/s!AlvsB_ZEXPkijP1_mufUWbz8rCVoEA) or [Baidu Drive](https://pan.baidu.com/s/1bu7hD8-nvB_pOzrMfCebFw)```password:f5fe```. For the format of dataset, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder.
 
 To train with the bibsonomy dataset
 ```
