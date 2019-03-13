@@ -62,4 +62,3 @@ The ```--lambda_sim``` and ```--lambda_sub``` work only when the ```--variations
 * The official Bibsonomy dataset is acquired from https://www.kde.cs.uni-kassel.de/bibsonomy/dumps/ after request.
 * The official Zhihu dataset is from https://biendata.com/competition/zhihu/data/.
 * The whole Microsoft Concept Graph is acquired from https://concept.research.microsoft.com/Home/Introduction.
-* The DBpedia SKOS concepts 2015-10 is acquired from http://downloads.dbpedia.org/2015-10/core/.
