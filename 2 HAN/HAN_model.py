@@ -1,6 +1,6 @@
 # partly adapted from the https://github.com/brightmart/text_classification/tree/master/a05_HierarchicalAttentionNetwork
 
-# last updated: 13 March 2019
+# last updated: 25 March 2019
 
 # -*- coding: utf-8 -*-
 # HierarchicalAttention: 1.Word Encoder. 2.Word Attention. 3.Sentence Encoder 4.Sentence Attention 5.linear classifier. 2017-06-13
@@ -57,15 +57,23 @@ class HAN:
             print("going to use multi label loss.")
             if self.lambda_sim == 0:
                 if self.lambda_sub == 0:
-                    self.loss_val = self.loss_multilabel() # without any semantic regulariser, no j_sim or j_sub
+                    # none
+                    self.loss_val = self.loss_multilabel() # without any semantic regularisers, no L_sim or L_sub
                 else:
-                    self.loss_val = self.loss_multilabel_onto_new_sub(self.label_sub_matrix); # using j_sub only
+                    # using L_sub only
+                    self.loss_val = self.loss_multilabel_onto_new_sub_per_batch(self.label_sub_matrix); # j,k per batch - used in the NAACL paper
+                    #self.loss_val = self.loss_multilabel_onto_new_sub_per_doc(self.label_sub_matrix); # j,k per document
             else:
                 if self.lambda_sub == 0:
-                    # using j_sim only
-                    self.loss_val = self.loss_multilabel_onto_new_sim(self.label_sim_matrix)
+                    # using L_sim only
+                    #pair_diff_squared on s_d
+                    self.loss_val = self.loss_multilabel_onto_new_sim_per_batch(self.label_sim_matrix) # j,k per batch - used in the NAACL paper
+                    #self.loss_val = self.loss_multilabel_onto_new_sim_per_doc(self.label_sim_matrix) # j,k per document
+                    
                 else:
-                    self.loss_val = self.loss_multilabel_onto_new_simsub(self.label_sim_matrix,self.label_sub_matrix)
+                    # L_sim+L_sub
+                    self.loss_val = self.loss_multilabel_onto_new_simsub_per_batch(self.label_sim_matrix,self.label_sub_matrix) # j,k per batch - used in the NAACL paper
+                    #self.loss_val = self.loss_multilabel_onto_new_simsub_per_doc(self.label_sim_matrix,self.label_sub_matrix) # j,k per document
         else:
             print("going to use single label loss.")
             self.loss_val = self.loss()
@@ -308,7 +316,7 @@ class HAN:
             loss = loss + l2_losses
         return loss
     
-    # loss for multi-label classification (JMAN-s)
+    # loss for multi-label classification
     def loss_multilabel(self, l2_lambda=0.0001):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
@@ -327,11 +335,8 @@ class HAN:
             loss = self.loss_ce + self.l2_losses
         return loss
     
-    # L_sim only
-    def loss_multilabel_onto_new_sim(self, label_sim_matrix, l2_lambda=0.0001):
-    # here we will experiment with different value of onto_lambda.
-        # original, embedding 100dim, 57.2% (f-measure@11)
-        # lambda2 = 0.0001, embedding 100dim, 56.9% (f-measure@11)
+    # L_sim only: j,k per batch
+    def loss_multilabel_onto_new_sim_per_batch(self, label_sim_matrix, l2_lambda=0.0001):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
             # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
@@ -346,16 +351,16 @@ class HAN:
             self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
             
             # only considering the similarity of co-occuring label in each labelset y_d. 
-            co_label_mat_batch = tf.matmul(tf.transpose(self.input_y_multilabel),self.input_y_multilabel,a_is_sparse=True,b_is_sparse=True)
+            co_label_mat_batch = tf.matmul(tf.transpose(self.input_y_multilabel),self.input_y_multilabel,a_is_sparse=True,b_is_sparse=True) # input_y_multilabel is a matrix \in R^{|D|,|T|}
             co_label_mat_batch = tf.sign(co_label_mat_batch)
             label_sim_matrix = tf.multiply(co_label_mat_batch,label_sim_matrix) # only considering the label similarity of labels in the label set for this document (here is a batch).
             
-            # sim-loss after sigmoid j_sim = sim(T_j,T_k)|s_dj-s_dk|^2
-            sig_output = tf.sigmoid(self.logits)
-            vec_square = tf.multiply(sig_output,sig_output)
-            vec_square = tf.reduce_sum(vec_square,0) # an array of num_classes values {sum_d l_di}_i
+            # sim-loss after sigmoid L_sim = sim(T_j,T_k)|s_dj-s_dk|^2
+            sig_output = tf.sigmoid(self.logits) # self.logit is the matrix S \in R^{|D|,|T|}
+            vec_square = tf.multiply(sig_output,sig_output) # element-wise multiplication 
+            vec_square = tf.reduce_sum(vec_square,0) # an array of num_classes values {sum_d l_dj^2}_j
             vec_mid = tf.matmul(tf.transpose(sig_output),sig_output)
-            vec_rows=tf.ones([tf.size(vec_square),1])*vec_square
+            vec_rows=tf.ones([tf.size(vec_square),1])*vec_square # copy the vector by it self to shape a square
             vec_columns=tf.transpose(vec_rows)
             vec_diff=vec_rows-2*vec_mid+vec_columns # (li-lj)^2=li^2-2lilj+lj^2 # vec_diff is now a matrix = {sum_d (l_di-l_dj)^2}_i,j
             vec_diff=tf.multiply(vec_diff,label_sim_matrix) #sim(T_i,T_j)*(li-lj)^2 # element-wise # using the label_sim_matrix
@@ -368,16 +373,125 @@ class HAN:
             loss = self.loss_ce + self.l2_losses + self.sim_loss
         return loss
     
-    # the original L_sim with L_sub 
-    # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hyponym of T_k.
-    def loss_multilabel_onto_new_simsub(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001):
+	# L_sim only: j,k per document
+    def loss_multilabel_onto_new_sim_per_doc(self, label_sim_matrix, l2_lambda=0.0001):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
             # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
             # input_y:shape=(?, 1999); logits:shape=(?, 1999)
             # let `x = logits`, `z = labels`.  The logistic loss is:z * -log(sigmoid(x)) + (1 - z) * -log(1 - sigmoid(x))
-            losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.input_y_multilabel,
-                                                             logits=self.logits);  # losses=tf.nn.softmax_cross_entropy_with_logits(labels=self.input__y,logits=self.logits)
+            losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.input_y_multilabel,logits=self.logits);  # losses=tf.nn.softmax_cross_entropy_with_logits(labels=self.input__y,logits=self.logits)
+            # losses=-self.input_y_multilabel*tf.log(self.logits)-(1-self.input_y_multilabel)*tf.log(1-self.logits)
+            #print("sigmoid_cross_entropy_with_logits.losses:", losses)  # shape=(?, 1999).
+            losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch
+            self.loss_ce = tf.reduce_mean(losses)  # shape=().   average loss in the batch
+            self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
+            
+            # only considering the similarity of co-occuring label in each labelset y_d.
+            sig_output = tf.sigmoid(self.logits) # get s_d from l_d
+            sig_list=tf.unstack(sig_output)
+            
+            partitions = tf.range(self.batch_size)
+            num_partitions = self.batch_size
+            label_list = tf.dynamic_partition(self.input_y_multilabel, partitions, num_partitions, name='dynamic_unstack')
+            
+            self.sim_loss = 0
+            for i in range(len(sig_list)): # loop over d
+                logit_vector = tf.expand_dims(sig_list[i],0) # s_d, shape [1,5196]
+                #print("logit_vector:",logit_vector)
+                
+                label_vector = label_list[i] #y_d, shape [1,5196]
+                #print("label_vector:",label_vector)
+                
+                #get an index vector from y_d
+                label_index_2d = tf.where(label_vector)
+                #gather the s_d_true from s_d: s_d_true means the s_d values for the true labels of document d.  
+                s_d_true = tf.expand_dims(tf.gather_nd(logit_vector,label_index_2d),0)
+                #calculate |s_dj-s_dk|^2
+                pair_diff_squared_d = tf.square(tf.transpose(s_d_true) - s_d_true)
+                #gather the Sim_jk from Sim
+                label_index = label_index_2d[:,-1]
+                label_len = tf.shape(label_index)[0]
+                #ind_flat_lower = tf.tile(label_index,[label_len])
+                #ind_mat = tf.reshape(ind_flat_lower,[label_len,label_len])
+                #ind_flat_upper = tf.reshape(tf.transpose(ind_mat),[-1])
+                #ind_squ = tf.transpose(tf.stack([ind_flat_upper,ind_flat_lower]))
+                A,B=tf.meshgrid(label_index,tf.transpose(label_index))
+                ind_squ = tf.concat([tf.reshape(B,(-1,1)),tf.reshape(A,(-1,1))],axis=-1)
+                label_sim_matrix_d = tf.reshape(tf.gather_nd(label_sim_matrix,ind_squ),[label_len,label_len])
+                
+                self.sim_loss = self.sim_loss + tf.reduce_sum(tf.multiply(label_sim_matrix_d,pair_diff_squared_d))
+            self.sim_loss=(self.sim_loss/self.batch_size)*self.lambda_sim/2.0
+            self.sub_loss = tf.constant(0., dtype=tf.float32)
+            loss = self.loss_ce + self.l2_losses + self.sim_loss
+        return loss
+		
+    # L_sim and L_sub - per doc
+    # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hyponym of T_k.
+    def loss_multilabel_onto_new_simsub_per_doc(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001):
+        with tf.name_scope("loss"):
+            # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
+            # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
+            # input_y:shape=(?, 1999); logits:shape=(?, 1999)
+            # let `x = logits`, `z = labels`.  The logistic loss is:z * -log(sigmoid(x)) + (1 - z) * -log(1 - sigmoid(x))
+            losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.input_y_multilabel,logits=self.logits);  # losses=tf.nn.softmax_cross_entropy_with_logits(labels=self.input__y,logits=self.logits)
+            # losses=-self.input_y_multilabel*tf.log(self.logits)-(1-self.input_y_multilabel)*tf.log(1-self.logits)
+            #print("sigmoid_cross_entropy_with_logits.losses:", losses)  # shape=(?, 1999).
+            losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch
+            self.loss_ce = tf.reduce_mean(losses)  # shape=().   average loss in the batch
+            self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
+            
+            sig_output = tf.sigmoid(self.logits) # get s_d from l_d
+            sig_list=tf.unstack(sig_output)
+            
+            partitions = tf.range(self.batch_size)
+            num_partitions = self.batch_size
+            label_list = tf.dynamic_partition(self.input_y_multilabel, partitions, num_partitions, name='dynamic_unstack')
+            
+            self.sim_loss = 0
+            self.sub_loss = 0
+            for i in range(len(sig_list)): # loop over d
+                logit_vector = tf.expand_dims(sig_list[i],0) # s_d, shape [1,5196]
+                #print("logit_vector:",logit_vector)
+                
+                label_vector = label_list[i] #y_d, shape [1,5196]
+                #print("label_vector:",label_vector)
+                
+                #get an index vector from y_d
+                label_index_2d = tf.where(label_vector)
+                #gather the s_d_true from s_d: s_d_true means the s_d values for the true labels of document d.  
+                s_d_true = tf.expand_dims(tf.gather_nd(logit_vector,label_index_2d),0)
+                #calculate |s_dj-s_dk|^2
+                pair_diff_squared_d = tf.square(tf.transpose(s_d_true) - s_d_true)
+                #calculate R(s_dj)(1-R(s_dk))
+                pred_d_true = tf.round(s_d_true)
+                pair_sub_d = tf.matmul(tf.transpose(pred_d_true),1-pred_d_true)
+                
+                #gather the Sim_jk from Sim and the Sub_jk from Sub
+                label_index = label_index_2d[:,-1]
+                label_len = tf.shape(label_index)[0]
+                A,B=tf.meshgrid(label_index,tf.transpose(label_index))
+                ind_squ = tf.concat([tf.reshape(B,(-1,1)),tf.reshape(A,(-1,1))],axis=-1)
+                label_sim_matrix_d = tf.reshape(tf.gather_nd(label_sim_matrix,ind_squ),[label_len,label_len])
+                label_sub_matrix_d = tf.reshape(tf.gather_nd(label_sub_matrix,ind_squ),[label_len,label_len])
+                
+                self.sim_loss = self.sim_loss + tf.reduce_sum(tf.multiply(label_sim_matrix_d,pair_diff_squared_d))
+                self.sub_loss = self.sub_loss + tf.reduce_sum(tf.multiply(label_sub_matrix_d,pair_sub_d))
+            self.sim_loss=(self.sim_loss/self.batch_size)*self.lambda_sim/2.0
+            self.sub_loss=(self.sub_loss/self.batch_size)*self.lambda_sub/2.0
+            
+            loss = self.loss_ce + self.l2_losses + self.sim_loss + self.sub_loss
+        return loss
+        
+    # L_sim and L_sub - per batch, used in the NAACL paper
+    # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hypernym of T_k.
+    def loss_multilabel_onto_new_simsub_per_batch(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001):
+        with tf.name_scope("loss"):
+            # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
+            # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
+            # input_y:shape=(?, 1999); logits:shape=(?, 1999)
+            # let `x = logits`, `z = labels`.  The logistic loss is:z * -log(sigmoid(x)) + (1 - z) * -log(1 - sigmoid(x))
+            losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.input_y_multilabel,logits=self.logits);  # losses=tf.nn.softmax_cross_entropy_with_logits(labels=self.input__y,logits=self.logits)
             # losses=-self.input_y_multilabel*tf.log(self.logits)-(1-self.input_y_multilabel)*tf.log(1-self.logits)
             #print("sigmoid_cross_entropy_with_logits.losses:", losses)  # shape=(?, 1999).
             losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch
@@ -386,7 +500,7 @@ class HAN:
             
             co_label_mat_batch = tf.matmul(tf.transpose(self.input_y_multilabel),self.input_y_multilabel,a_is_sparse=True,b_is_sparse=True)
             co_label_mat_batch = tf.sign(co_label_mat_batch)
-            label_sim_matrix = tf.multiply(co_label_mat_batch,label_sim_matrix) # only considering the label similarity of labels in the label set for this document (batch).
+            label_sim_matrix = tf.multiply(co_label_mat_batch,label_sim_matrix) # only considering the label similarity of labels in the label set for this document (batch of documents).
             label_sub_matrix = tf.multiply(co_label_mat_batch,label_sub_matrix)
             
             # the sim-loss after sigmoid
@@ -412,15 +526,14 @@ class HAN:
             loss = self.loss_ce + self.l2_losses + self.sim_loss + self.sub_loss
         return loss
     
-    # L_sub only    
-    def loss_multilabel_onto_new_sub(self, label_sub_matrix, l2_lambda=0.0001): 
+    # L_sub only - per batch - used in the NAACL paper
+    def loss_multilabel_onto_new_sub_per_batch(self, label_sub_matrix, l2_lambda=0.0001):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
             # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
             # input_y:shape=(?, 1999); logits:shape=(?, 1999)
             # let `x = logits`, `z = labels`.  The logistic loss is:z * -log(sigmoid(x)) + (1 - z) * -log(1 - sigmoid(x))
-            losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.input_y_multilabel,
-                                                             logits=self.logits);  # losses=tf.nn.softmax_cross_entropy_with_logits(labels=self.input__y,logits=self.logits)
+            losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.input_y_multilabel,logits=self.logits);  # losses=tf.nn.softmax_cross_entropy_with_logits(labels=self.input__y,logits=self.logits)
             # losses=-self.input_y_multilabel*tf.log(self.logits)-(1-self.input_y_multilabel)*tf.log(1-self.logits)
             #print("sigmoid_cross_entropy_with_logits.losses:", losses)  # shape=(?, 1999).
             losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch
@@ -442,7 +555,59 @@ class HAN:
             self.sim_loss = tf.constant(0., dtype=tf.float32)
             loss = self.loss_ce + self.l2_losses + self.sub_loss
         return loss
-
+    
+    # L_sub only - per document
+    def loss_multilabel_onto_new_sub_per_doc(self, label_sub_matrix, l2_lambda=0.0001):
+        with tf.name_scope("loss"):
+            # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
+            # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
+            # input_y:shape=(?, 1999); logits:shape=(?, 1999)
+            # let `x = logits`, `z = labels`.  The logistic loss is:z * -log(sigmoid(x)) + (1 - z) * -log(1 - sigmoid(x))
+            losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.input_y_multilabel,logits=self.logits);  # losses=tf.nn.softmax_cross_entropy_with_logits(labels=self.input__y,logits=self.logits)
+            # losses=-self.input_y_multilabel*tf.log(self.logits)-(1-self.input_y_multilabel)*tf.log(1-self.logits)
+            #print("sigmoid_cross_entropy_with_logits.losses:", losses)  # shape=(?, 1999).
+            losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch
+            self.loss_ce = tf.reduce_mean(losses)  # shape=().   average loss in the batch
+            self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
+            
+            ## sub_loss: matrix multiplication: only using the label relations in the label set, treating same in each batch.
+            # only considering the similarity of co-occuring label in each labelset y_d.
+            sig_output = tf.sigmoid(self.logits) # get s_d from l_d
+            sig_list=tf.unstack(sig_output)
+            
+            partitions = tf.range(self.batch_size)
+            num_partitions = self.batch_size
+            label_list = tf.dynamic_partition(self.input_y_multilabel, partitions, num_partitions, name='dynamic_unstack')
+            
+            self.sub_loss = 0
+            for i in range(len(sig_list)): # loop over d
+                logit_vector = tf.expand_dims(sig_list[i],0) # s_d, shape [1,5196]
+                #print("logit_vector:",logit_vector)
+                
+                label_vector = label_list[i] #y_d, shape [1,5196]
+                #print("label_vector:",label_vector)
+                
+                #get an index vector from y_d
+                label_index_2d = tf.where(label_vector)
+                #gather the s_d_true from s_d: s_d_true means the s_d values for the true labels of document d.  
+                s_d_true = tf.expand_dims(tf.gather_nd(logit_vector,label_index_2d),0)
+                #calculate R(s_dj)(1-R(s_dk))
+                pred_d_true = tf.round(s_d_true)
+                pair_sub_d = tf.matmul(tf.transpose(pred_d_true),1-pred_d_true)
+                #gather the Sub_jk from Sub
+                label_index = label_index_2d[:,-1]
+                label_len = tf.shape(label_index)[0]
+                A,B=tf.meshgrid(label_index,tf.transpose(label_index))
+                ind_squ = tf.concat([tf.reshape(B,(-1,1)),tf.reshape(A,(-1,1))],axis=-1)
+                label_sub_matrix_d = tf.reshape(tf.gather_nd(label_sub_matrix,ind_squ),[label_len,label_len])
+                
+                self.sub_loss = self.sub_loss + tf.reduce_sum(tf.multiply(label_sub_matrix_d,pair_sub_d))
+            
+            self.sub_loss=(self.sub_loss/self.batch_size)*self.lambda_sub/2.0
+            
+            self.sim_loss = tf.constant(0., dtype=tf.float32)
+            loss = self.loss_ce + self.l2_losses + self.sub_loss
+        return loss
         
     def train(self):
         """based on the loss, use SGD to update parameter"""
