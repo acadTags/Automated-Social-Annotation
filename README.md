@@ -11,7 +11,7 @@ This tool is the source code for the proposed method and baselines reported in t
 * [Numpy](http://www.numpy.org/)
 * [TFLearn](http://tflearn.org/)
 
-# Contents
+# Content
 * ```./0 JMAN/JMAN_train.py``` contains code for configuration and training
 * ```./0 JMAN/JMAN_model.py``` contains the computational graph, loss function and optimisation
 * ```./0 JMAN/data_util.py``` contains code for input and target generation
