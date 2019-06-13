@@ -11,8 +11,8 @@ This tool is the source code for the proposed method and baselines reported in t
 * [danielfrg's word2vec python package](https://github.com/danielfrg/word2vec)
 * [Numpy](http://www.numpy.org/)
 * [TFLearn](http://tflearn.org/)
-* [scikit-learn](http://scikit-learn.github.io/stable), especially sklearn.multiclass.OneVsRestClassifier and sklearn.svm.SVC, for SVM-ovr.
-* [gensim](https://radimrehurek.com/gensim/), especially gensim.models.wrappers.LdaMallet for LDA.
+* [scikit-learn](http://scikit-learn.github.io/stable), especially ```sklearn.multiclass.OneVsRestClassifier``` and ```sklearn.svm.SVC```, for SVM-ovr.
+* [gensim](https://radimrehurek.com/gensim/), especially ```gensim.models.wrappers.LdaMallet``` for LDA.
 
 # Content
 * ```./0 JMAN/JMAN_train.py``` contains code for configuration and training
