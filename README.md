@@ -51,6 +51,18 @@ python JMAN_train.py --dataset citeulike-t-clean --marking_id cut
 
 Similarly, we can train both dataset using the Bi-GRU or the HAN model by running each ```*_train.py``` file in the ```./1 BiGRU/``` or ```./2 HAN/``` folder.
 
+The LDA and SVM-ovr can be trained and tested similarly. The command below tests SVM-ovr on the Bibsonomy dataset with both C and gamma as 100 using 10-fold cross-validation.
+```
+python SVM.py --dataset bibsonomy-clean --mode rbf --C 100 --gamma 100 --kfold 10
+```
+
+The command below tests LDA on the Bibsonomy dataset with number of topics as 200 and number of similar documents as 1, using 10-fold cross-validaion.
+```
+python LDA.py --dataset bibsonomy-clean --k_num_doc 1 --num_topics 200 --kfold 10 --marking_id final-cv10
+```
+
+In all cases above, ```kfold``` can be set to -1 to test with a single fold for quick testing.
+
 To view the changing of training loss and validation loss, replacing $PATH-logs$ to a real path.
 ```
 tensorboard --logdir $PATH-logs$
