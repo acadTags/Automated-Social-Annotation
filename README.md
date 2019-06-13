@@ -38,6 +38,14 @@ To train with the zhihu dataset
 python JMAN_train.py --dataset zhihu-sample --marking_id zhihu
 ```
 
+To train with the CiteULike-a and the CiteULike-t datasets
+```
+python JMAN_train.py --dataset citeulike-a-clean --marking_id cua
+```
+```
+python JMAN_train.py --dataset citeulike-t-clean --marking_id cut
+```
+
 Similarly, we can train both dataset using the Bi-GRU or the HAN model by running each ```*_train.py``` file in the ```./1 BiGRU/``` or ```./2 HAN/``` folder.
 
 To view the changing of training loss and validation loss, replacing $PATH-logs$ to a real path.
