@@ -58,5 +58,5 @@ The ```--lambda_sim``` and ```--lambda_sub``` work only when the ```--variations
 * Our code is based on [brightmart's implementation](https://github.com/brightmart/text_classification) of TextRNN and Hierarchical Attention Network under the MIT license.
 * The official Bibsonomy dataset is acquired from https://www.kde.cs.uni-kassel.de/bibsonomy/dumps/ after request.
 * The official Zhihu dataset is from https://biendata.com/competition/zhihu/data/.
-* The CiteULike-a and CiteULike-t dataset are from *Collaborative topic regression with social regularization for tag recommendation* (Wang, Chen, and Li, 2013).
+* The CiteULike-a and CiteULike-t dataset are from *Collaborative topic regression with social regularization for tag recommendation* (Wang, Chen, and Li, 2013, [link](https://sites.cs.ucsb.edu/~binyichen/IJCAI13-400.pdf)).
 * The whole Microsoft Concept Graph is acquired from https://concept.research.microsoft.com/Home/Introduction.
