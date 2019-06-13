@@ -16,7 +16,8 @@ This tool is the source code for the proposed method and baselines reported in t
 * ```./0 JMAN/JMAN_train.py``` contains code for configuration and training
 * ```./0 JMAN/JMAN_model.py``` contains the computational graph, loss function and optimisation
 * ```./0 JMAN/data_util.py``` contains code for input and target generation
-* ```./1 BiGRU/``` and ```./2 HAN/``` have a similar structure as in ```./0 JMAN/```
+* ```./1 BiGRU/``` (Bi-directional Gated Recurrent Unit) and ```./2 HAN/``` (Hierarchical Attention Network) have a similar structure as in ```./0 JMAN/```
+* ```./3 LDA/``` (Latent Dirichlet Allocation) and ```./4 SVM-ovr/``` (Support Vector Machine one-versus-rest for multilabel classification), each contains the main code and the utility code.
 * ```./embeddings``` contains self-trained word2vec embeddings
 * ```./datasets``` contains the datasets used
 * ```./knowledge_bases``` contains knowledge sources used for label subsumption relations
