@@ -1,3 +1,6 @@
+# author: Hang Dong
+# last updated: 14 June 2019
+
 import tensorflow as tf
 import numpy as np
 import time
