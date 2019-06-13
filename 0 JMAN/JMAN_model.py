@@ -1,7 +1,7 @@
 # partly adapted from the https://github.com/brightmart/text_classification/tree/master/a05_HierarchicalAttentionNetwork
 
 # author: Hang Dong
-# last updated: 25 March 2019
+# last updated: 14 June 2019
 
 # -*- coding: utf-8 -*-
 import tensorflow as tf
