@@ -1,6 +1,6 @@
 # partly adapted from the https://github.com/brightmart/text_classification/tree/master/a03_TextRNN
 
-# last updated: 13 March 2019
+# last updated: 14 June 2019
 
 # -*- coding: utf-8 -*-
 #training the model.
@@ -77,7 +77,7 @@ tf.app.flags.DEFINE_string("emb_model_path_zhihu","../embeddings/tag_all.bin-300
 tf.app.flags.DEFINE_string("emb_model_path_cua","../embeddings/tag-citeulike-a-all.bin-300","pre-trained model from cua labels")
 tf.app.flags.DEFINE_string("emb_model_path_cut","../embeddings/tag-citeulike-t-all.bin-300","pre-trained model from cut labels")
 
-tf.app.flags.DEFINE_string("kb_bib","../knowledge_bases/bibsonomy_mcg5_pw_candidts_all_labelled.csv","labels matched to Microsoft Concept Graph relations for bib data") # for bibsonomy dataset
+tf.app.flags.DEFINE_string("kb_bib","../knowledge_bases/bibsonomy_mcg5_cleaned.csv","labels matched to Microsoft Concept Graph relations for bib data") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("kb_zhihu","../knowledge_bases/zhihu_kb.csv","label relations for zhihu data") # for zhihu dataset
 tf.app.flags.DEFINE_string("kb_cua","../knowledge_bases/citeulike-a-mcg-kb.csv","label matched to Microsoft Concept Graph relations for cua data") # for cua dataset
 tf.app.flags.DEFINE_string("kb_cut","../knowledge_bases/citeulike-t-mcg-kb.csv","label matched to Microsoft Concept Graph relations for cut data") # for cut dataset
