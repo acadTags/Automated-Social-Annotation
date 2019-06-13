@@ -28,7 +28,7 @@ This tool is the source code for the proposed method and baselines reported in t
 # Quick Start
 The files under ```./datasets```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from [OneDrive](https://1drv.ms/u/s!AlvsB_ZEXPkijP1_mufUWbz8rCVoEA) or [Baidu Drive](https://pan.baidu.com/s/1bu7hD8-nvB_pOzrMfCebFw)```password:f5fe```. For the format of datasets, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder.
 
-#### run JMAN
+#### Run JMAN
 To train with the bibsonomy dataset
 ```
 python JMAN_train.py --dataset bibsonomy-clean --marking_id bib
@@ -50,10 +50,10 @@ python JMAN_train.py --dataset citeulike-a-clean --marking_id cua
 python JMAN_train.py --dataset citeulike-t-clean --marking_id cut
 ```
 
-#### run Bi-GRU and HAN
+#### Run Bi-GRU and HAN
 Similarly, we can train both dataset using the Bi-GRU or the HAN model by running each ```*_train.py``` file in the ```./1 BiGRU/``` or ```./2 HAN/``` folder.
 
-#### run SVM-ovr and LDA
+#### Run SVM-ovr and LDA
 The LDA and SVM-ovr can be trained and tested similarly. The command below tests SVM-ovr on the Bibsonomy dataset with both C and gamma as 100 using 10-fold cross-validation.
 ```
 python SVM.py --dataset bibsonomy-clean --mode rbf --C 100 --gamma 100 --kfold 10
@@ -64,7 +64,7 @@ The command below tests LDA on the Bibsonomy dataset with number of topics as 20
 python LDA.py --dataset bibsonomy-clean --k_num_doc 1 --num_topics 200 --kfold 10 --marking_id final-cv10
 ```
 
-#### tips for training and testing
+#### Tips for Training and Testing
 In all cases above, ```kfold``` can be set to -1 to test with a single fold for quick testing.
 
 To view the changing of training loss and validation loss, replacing $PATH-logs$ to a real path.
