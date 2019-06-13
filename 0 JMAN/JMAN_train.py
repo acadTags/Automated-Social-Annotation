@@ -61,8 +61,10 @@ tf.app.flags.DEFINE_float("keep_label_percent",1,"the percentage of labels in ea
 #for both tuning and final testing - using the -title version
 tf.app.flags.DEFINE_string("training_data_path_bib","../datasets/bibsonomy_preprocessed_title+abstract_for_JMAN_final.txt","path of traning data.") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("training_data_path_zhihu","../datasets/question_train_set_title_cleaned_150000.txt","path of traning data.") # for zhihu dataset
+tf.app.flags.DEFINE_string("training_data_path_cua","../datasets/citeulike_a_cleaned_title_th10_for_JMAN.txt","path of traning data.") # for cua dataset
+tf.app.flags.DEFINE_string("training_data_path_cut","../datasets/citeulike_t_cleaned_title_th10_for_JMAN.txt","path of traning data.") # for cut dataset
 
-tf.app.flags.DEFINE_float("valid_portion",0.1,"dev set or test set portion") # this is only valid when kfold is -1, which means we hold out a fixed set for validation. If we set this as 0.1, then there will be 0.81 0.09 0.1 for train-valid-test split (same as the split of 10-fold cross-validation); if we set this as 0.111, then there will be 0.8 0.1 0.1 for train-valid-test split.
+tf.app.flags.DEFINE_float("valid_portion",0.1,"dev set or test set portion") # this is only used when kfold is -1, which means we hold out a fixed set for validation. If we set this as 0.1, then there will be 0.81 0.09 0.1 for train-valid-test split (same as the split of 10-fold cross-validation); if we set this as 0.111, then there will be 0.8 0.1 0.1 for train-valid-test split.
 tf.app.flags.DEFINE_float("test_portion",0.1,"held-out evaluation: test set portion")
 tf.app.flags.DEFINE_integer("kfold",10,"k-fold cross-validation") # if k is -1, then not using kfold cross-validation
 
@@ -70,12 +72,18 @@ tf.app.flags.DEFINE_string("marking_id","","an marking_id (or group_id) for bett
 
 tf.app.flags.DEFINE_string("word2vec_model_path_bib","../embeddings/word-bib.bin-100","word2vec's vocabulary and vectors for inputs")
 tf.app.flags.DEFINE_string("word2vec_model_path_zhihu","../embeddings/word150000.bin-100","word2vec's vocabulary and vectors")
+tf.app.flags.DEFINE_string("word2vec_model_path_cua","../embeddings/word-citeulike-a.bin-100","word2vec's vocabulary and vectors")
+tf.app.flags.DEFINE_string("word2vec_model_path_cut","../embeddings/word-citeulike-t-th10.bin-100","word2vec's vocabulary and vectors")
 
 tf.app.flags.DEFINE_string("emb_model_path_bib","../embeddings/tag-all-bib-final.bin-300","pre-trained model from bibsonomy labels")
 tf.app.flags.DEFINE_string("emb_model_path_zhihu","../embeddings/tag_all.bin-300","pre-trained model from zhihu labels")
+tf.app.flags.DEFINE_string("emb_model_path_cua","../embeddings/tag-citeulike-a-all.bin-300","pre-trained model from cua labels")
+tf.app.flags.DEFINE_string("emb_model_path_cut","../embeddings/tag-citeulike-t-all.bin-300","pre-trained model from cut labels")
 
-tf.app.flags.DEFINE_string("kb_bib","../knowledge_bases/bibsonomy_mcg5_cleaned.csv","labels matched to Microsoft Concept Graph relations") # for bibsonomy dataset
+tf.app.flags.DEFINE_string("kb_bib","../knowledge_bases/bibsonomy_mcg5_pw_candidts_all_labelled.csv","labels matched to Microsoft Concept Graph relations for bib data") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("kb_zhihu","../knowledge_bases/zhihu_kb.csv","label relations for zhihu data") # for zhihu dataset
+tf.app.flags.DEFINE_string("kb_cua","../knowledge_bases/citeulike-a-mcg-kb.csv","label matched to Microsoft Concept Graph relations for cua data") # for cua dataset
+tf.app.flags.DEFINE_string("kb_cut","../knowledge_bases/citeulike-t-mcg-kb.csv","label matched to Microsoft Concept Graph relations for cut data") # for cut dataset
 
 tf.app.flags.DEFINE_boolean("multi_label_flag",True,"use multi label or single label.")
 tf.app.flags.DEFINE_integer("num_sentences", 10, "number of sentences in the document")
@@ -148,6 +156,54 @@ def main(_):
         #FLAGS.lambda_sim = 0.001 # lambda1
         #FLAGS.lambda_sub = 0.0001 # lambda2
         FLAGS.topk = 2
+        
+    elif FLAGS.dataset == "citeulike-a-clean":
+        word2vec_model_path = FLAGS.word2vec_model_path_cua
+        traning_data_path = FLAGS.training_data_path_cua
+        emb_model_path = FLAGS.emb_model_path_cua
+        
+        vocabulary_word2index_label,vocabulary_index2word_label = create_voabulary_label(voabulary_label=traning_data_path, name_scope=FLAGS.dataset + "-JMAN", label_freq_th = 0)
+        
+        #similarity relations: using self-trained label embedding
+        label_sim_mat = get_label_sim_matrix(vocabulary_index2word_label,emb_model_path,name_scope=FLAGS.dataset)
+        
+        #subsumption relations: using external knowledge bases
+        label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_cua,name_scope='cua');print('using cua-mcg relations')
+        
+        #configurations:
+        FLAGS.batch_size = 128
+        FLAGS.sequence_length = 300
+        FLAGS.sequence_length_title = 30
+        FLAGS.num_sentences = 10 #length of sentence 30
+        FLAGS.ave_labels_per_doc = 11.6
+        #FLAGS.lambda_sim = 0.0001 # lambda1
+        #FLAGS.lambda_sub = 0.1 # lambda2
+        FLAGS.topk = 50
+        #FLAGS.early_stop_lr = 0.001
+    
+    elif FLAGS.dataset == "citeulike-t-clean":
+        word2vec_model_path = FLAGS.word2vec_model_path_cut
+        traning_data_path = FLAGS.training_data_path_cut
+        emb_model_path = FLAGS.emb_model_path_cut
+        
+        vocabulary_word2index_label,vocabulary_index2word_label = create_voabulary_label(voabulary_label=traning_data_path, name_scope=FLAGS.dataset + "-JMAN", label_freq_th = 0)
+        
+        #similarity relations: using self-trained label embedding
+        label_sim_mat = get_label_sim_matrix(vocabulary_index2word_label,emb_model_path,name_scope=FLAGS.dataset)
+        
+        #subsumption relations: using external knowledge bases
+        label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_cut,name_scope='cut');print('using cut-mcg relations')
+        
+        #configurations:
+        FLAGS.batch_size = 128
+        FLAGS.sequence_length = 300
+        FLAGS.sequence_length_title = 30
+        FLAGS.num_sentences = 10 #length of sentence 30
+        FLAGS.ave_labels_per_doc = 7.68
+        #FLAGS.lambda_sim = 0.00001 # lambda1
+        #FLAGS.lambda_sub = 0.001 # lambda2
+        FLAGS.topk = 50
+        #FLAGS.early_stop_lr = 0.001
         
     else:
         print("dataset unrecognisable")

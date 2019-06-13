@@ -67,19 +67,18 @@ class JMAN:
                     self.loss_val = self.loss_multilabel() # without any semantic regularisers, no L_sim or L_sub
                 else:
                     # using L_sub only
-                    self.loss_val = self.loss_multilabel_onto_new_sub_per_batch(self.label_sub_matrix); # j,k per batch - used in the NAACL paper
-                    #self.loss_val = self.loss_multilabel_onto_new_sub_per_doc(self.label_sub_matrix); # j,k per document
+                    #self.loss_val = self.loss_multilabel_onto_new_sub_per_batch(self.label_sub_matrix); # j,k per batch - used in the NAACL paper
+                    self.loss_val = self.loss_multilabel_onto_new_sub_per_doc(self.label_sub_matrix); # j,k per document
             else:
                 if self.lambda_sub == 0:
                     # using L_sim only
-                    #pair_diff_squared on s_d
-                    self.loss_val = self.loss_multilabel_onto_new_sim_per_batch(self.label_sim_matrix) # j,k per batch - used in the NAACL paper
-                    #self.loss_val = self.loss_multilabel_onto_new_sim_per_doc(self.label_sim_matrix) # j,k per document
+                    #self.loss_val = self.loss_multilabel_onto_new_sim_per_batch(self.label_sim_matrix) # j,k per batch - used in the NAACL paper
+                    self.loss_val = self.loss_multilabel_onto_new_sim_per_doc(self.label_sim_matrix) # j,k per document
                     
                 else:
                     # L_sim+L_sub
-                    self.loss_val = self.loss_multilabel_onto_new_simsub_per_batch(self.label_sim_matrix,self.label_sub_matrix) # j,k per batch - used in the NAACL paper
-                    #self.loss_val = self.loss_multilabel_onto_new_simsub_per_doc(self.label_sim_matrix,self.label_sub_matrix) # j,k per document
+                    #self.loss_val = self.loss_multilabel_onto_new_simsub_per_batch(self.label_sim_matrix,self.label_sub_matrix) # j,k per batch - used in the NAACL paper
+                    self.loss_val = self.loss_multilabel_onto_new_simsub_per_doc(self.label_sim_matrix,self.label_sub_matrix) # j,k per document
         else:
             print("going to use single label loss.")
             self.loss_val = self.loss()
@@ -522,7 +521,7 @@ class JMAN:
             loss = loss + l2_losses
         return loss
     
-    # loss for multi-label classification
+    # loss for multi-label classification (for JMAN-s)
     def loss_multilabel(self, l2_lambda=0.0001):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
@@ -541,7 +540,7 @@ class JMAN:
             loss = self.loss_ce + self.l2_losses
         return loss
     
-    # L_sim only: j,k per batch
+    # L_sim only: j,k per batch, used in the NAACL paper
     def loss_multilabel_onto_new_sim_per_batch(self, label_sim_matrix, l2_lambda=0.0001):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
@@ -579,7 +578,7 @@ class JMAN:
             loss = self.loss_ce + self.l2_losses + self.sim_loss
         return loss
     
-	# L_sim only: j,k per document
+    # L_sim only: j,k per document
     def loss_multilabel_onto_new_sim_per_doc(self, label_sim_matrix, l2_lambda=0.0001):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
@@ -631,8 +630,8 @@ class JMAN:
             self.sub_loss = tf.constant(0., dtype=tf.float32)
             loss = self.loss_ce + self.l2_losses + self.sim_loss
         return loss
-		
-    # L_sim and L_sub - per doc
+        
+    # L_sim and L_sub - per document
     # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hyponym of T_k.
     def loss_multilabel_onto_new_simsub_per_doc(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001):
         with tf.name_scope("loss"):
