@@ -54,7 +54,9 @@ python JMAN_train.py --dataset citeulike-t-clean --marking_id cut
 Similarly, we can train both dataset using the Bi-GRU or the HAN model by running each ```*_train.py``` file in the ```./1 BiGRU/``` or ```./2 HAN/``` folder.
 
 #### Run SVM-ovr and LDA
-The LDA and SVM-ovr can be trained and tested similarly. The command below tests SVM-ovr on the Bibsonomy dataset with both C and gamma as 100 using 10-fold cross-validation.
+The LDA and SVM-ovr can be trained and tested with similar commands to the neural network models. 
+
+The command below tests SVM-ovr on the Bibsonomy dataset with both C and gamma as 100 using 10-fold cross-validation.
 ```
 python SVM.py --dataset bibsonomy-clean --mode rbf --C 100 --gamma 100 --kfold 10
 ```
