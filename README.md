@@ -56,7 +56,7 @@ Similarly, we can train both dataset using the Bi-GRU or the HAN model by runnin
 #### Run SVM-ovr and LDA
 The LDA and SVM-ovr can be trained and tested with similar commands to the neural network models. 
 
-The command below tests SVM-ovr on the Bibsonomy dataset with both C and gamma as 100 using 10-fold cross-validation.
+The command below tests SVM-ovr on the Bibsonomy dataset with both ```C``` and ```gamma``` (see the [practical guide from LIBSVM](https://www.csie.ntu.edu.tw/~cjlin/papers/guide/guide.pdf)) as 100 using 10-fold cross-validation.
 ```
 python SVM.py --dataset bibsonomy-clean --mode rbf --C 100 --gamma 100 --kfold 10
 ```
