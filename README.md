@@ -26,7 +26,9 @@ This tool is the source code for the proposed method and baselines reported in t
 * ```./cache_vocabulary_label_pik``` stores the cached .pik files about vocabularies and labels
 
 # Quick Start
-The files under ```./datasets```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from [OneDrive](https://1drv.ms/f/s!AlvsB_ZEXPkijqsFvM0iDt-AYi6iEg) or [Baidu Drive](https://pan.baidu.com/s/1-geSqJvwfWh5NZYXsWZEcA)```password:w9iu```. For the format of datasets, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder. All the ```--marking_id```s below are simply for better marking of the command, which will appear in the name of the output files, can be changed to other values and do not affect the running.
+The files under ```./datasets```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from [OneDrive](https://1drv.ms/f/s!AlvsB_ZEXPkijqsFvM0iDt-AYi6iEg) or [Baidu Drive](https://pan.baidu.com/s/1-geSqJvwfWh5NZYXsWZEcA)```password:w9iu```. For the format of datasets, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder. 
+
+All the ```--marking_id```s below are simply for better marking of the command, which will appear in the name of the output files, can be changed to other values and do not affect the running.
 
 #### Run JMAN
 To train with the bibsonomy dataset
