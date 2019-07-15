@@ -5,7 +5,7 @@ This tool is the source code for the proposed method and baselines reported in t
 * Automated Social Text Annotation with Joint Multi-Label Attention Networks, submitted to IEEE TKDE (preprint to be available soon).
 * Joint Multi-label Attention Network for Social Text Annotation, NAACL-HLT 2019 ([paper](https://www.aclweb.org/anthology/N19-1136), [poster](http://cgi.csc.liv.ac.uk/~hang/ppt/naacl2019_poster_HD.pdf)).
 
-The model takes both the title and the sentences in content of a document as input, and predicts whether the document is related to any of the labels in a label list. It is a multi-label classification model based on deep learning. The main contributions are: (i) title-guided sentence-level attention mechanism, using the title to guide the sentence representation; (ii) semantic-based loss regularisers, using label semantic relations to constrain the output of the neural network.
+The model takes both the title and the sentences in content of a document as input, and predicts whether the document is related to any of the labels in a label list. It is a multi-label classification model based on deep learning. The main contributions are: (i) title-guided sentence-level attention mechanism, using the title representation to guide the sentence "reading"; (ii) semantic-based loss regularisers, using label semantic relations to constrain the output of the neural network.
 
 <p align="center">
     <img src="https://github.com/acadTags/Automated-Social-Annotation/blob/master/0%20JMAN/model-figure/jman-final.PNG" width="700" title="The Joint Multi-label Attention Network (JMAN)">
