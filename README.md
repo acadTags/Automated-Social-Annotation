@@ -30,6 +30,7 @@ The model takes both the title and the sentences in content of a document as inp
 * ```./datasets``` contains the datasets used
 * ```./knowledge_bases``` contains knowledge sources used for label subsumption relations
 * ```./cache_vocabulary_label_pik``` stores the cached .pik files about vocabularies and labels
+* ```./0 JMAN/results/``` contains prediction results of JMAN for documents in the Bibsonomy, CiteULike, and Zhihu datasets.
 
 # Quick Start
 The files under ```./datasets```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from [OneDrive](https://1drv.ms/f/s!AlvsB_ZEXPkijqsFvM0iDt-AYi6iEg) or [Baidu Drive](https://pan.baidu.com/s/1-geSqJvwfWh5NZYXsWZEcA)```password:w9iu```. For the format of datasets, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder. 
