@@ -76,7 +76,7 @@ python SVM.py --dataset bibsonomy-clean --mode rbf --C 100 --gamma 100 --kfold 1
 ```
 
 #### Tips for Training and Testing
-In all cases above, ```kfold``` can be set to -1 to test with a single fold for quick testing.
+For all the cases above, ```kfold``` can be set to -1 to test with a single fold for quick testing.
 
 To view the changing of training loss and validation loss, replacing $PATH-logs$ to a real path.
 ```
