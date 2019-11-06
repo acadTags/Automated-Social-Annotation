@@ -13,7 +13,7 @@ JMAN (illustrated below) takes both the title and the sentences in content of a 
 
 # Requirements
 * Python 3.6.*
-* Tensorflow 1.8+
+* Tensorflow 1.8+ (not suitable for Tensorflow 2.0 so far, but welcome your help to migrate the code)
 * [danielfrg's word2vec python package](https://github.com/danielfrg/word2vec)
 * [Numpy](http://www.numpy.org/)
 * [TFLearn](http://tflearn.org/)
