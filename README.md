@@ -13,8 +13,8 @@ JMAN (illustrated below) takes both the title and the sentences in content of a 
 
 # Requirements
 * Python 3.6.*
-* Tensorflow 1.8+ (not suitable for Tensorflow 2.0 so far, but welcome your help to migrate the code)
-* [danielfrg's word2vec python package](https://github.com/danielfrg/word2vec)
+* Tensorflow 1.4.1+ (not suitable for Tensorflow 2.0 so far, but welcome your help to migrate the code)
+* [danielfrg's word2vec python package](https://github.com/danielfrg/word2vec) (this can be easily replaced by word2vec implemented in [gensim](https://radimrehurek.com/gensim/))
 * [Numpy](http://www.numpy.org/)
 * [TFLearn](http://tflearn.org/)
 * [scikit-learn](http://scikit-learn.github.io/stable), especially ```sklearn.multiclass.OneVsRestClassifier``` and ```sklearn.svm.SVC```, for SVM-ovr.
