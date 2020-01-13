@@ -766,11 +766,11 @@ def display_for_qualitative_evaluation(sess,modelToEval,label_sim_mat,label_sub_
         if FLAGS.variations == 'JMAN-s' or FLAGS.variations == 'JMAN':
             sent_att,tg_sent_att,word_att,word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention,modelToEval.p_attention_title,modelToEval.p_attention_word,modelToEval.p_attention_word_title,modelToEval.loss_val,modelToEval.logits],feed_dict)#curr_eval_acc--->modelToEval.accuracy
         elif FLAGS.variations == 'JMAN-s-tg':
-            sent_att,word_att,word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention,modelToEval.p_attention_word,modelToEval.p_attention_word,modelToEval.loss_val,modelToEval.logits],feed_dict)
+            sent_att,word_att,word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention,modelToEval.p_attention_word,modelToEval.p_attention_word_title,modelToEval.loss_val,modelToEval.logits],feed_dict)
         elif FLAGS.variations == 'JMAN-s-att':
-            tg_sent_att,word_att,word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention_title,modelToEval.p_attention_word,modelToEval.p_attention_word,modelToEval.loss_val,modelToEval.logits],feed_dict)
+            tg_sent_att,word_att,word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention_title,modelToEval.p_attention_word,modelToEval.p_attention_word_title,modelToEval.loss_val,modelToEval.logits],feed_dict)
         else: # default as 'JMAN'
-            sent_att,tg_sent_att,word_att,word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention,modelToEval.p_attention_title,modelToEval.p_attention_word,modelToEval.p_attention_word,modelToEval.loss_val,modelToEval.logits],feed_dict)#curr_eval_acc--->modelToEval.accuracy
+            sent_att,tg_sent_att,word_att,word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention,modelToEval.p_attention_title,modelToEval.p_attention_word,modelToEval.p_attention_word_title,modelToEval.loss_val,modelToEval.logits],feed_dict)#curr_eval_acc--->modelToEval.accuracy
         #print('word_att',word_att)
         #print('word_att:',word_att.shape)
         word_att = np.reshape(word_att, (batch_size,FLAGS.sequence_length))
