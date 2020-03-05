@@ -32,6 +32,7 @@ JMAN (illustrated below) takes both the title and the sentences in content of a 
 * ```./datasets``` contains the datasets used
 * ```./knowledge_bases``` contains knowledge sources used for label subsumption relations
 * ```./cache_vocabulary_label_pik``` stores the cached .pik files about vocabularies and labels
+* ```./meka_adapted``` contains the code that need to update to the scikit-multilearn package to run CC, HOMER, and PLST with base classfiers using complex commands on MEKA.
 * ```./0 JMAN/results/``` contains prediction results of JMAN for testing documents in the Bibsonomy, CiteULike, and Zhihu datasets.
 
 # Quick Start
@@ -64,7 +65,7 @@ python JMAN_train.py --dataset citeulike-t-clean --marking_id cut
 #### Run Bi-GRU and HAN
 Similarly, we can train both dataset using the Bi-GRU or the HAN model by running each ```*_train.py``` file in the ```./1 BiGRU/``` or ```./2 HAN/``` folder.
 
-#### Run LDA and SVM-ovr
+#### Run LDA, SVM-ovr, CC, HOMER, and PLST
 The LDA and SVM-ovr can be trained and tested with similar commands to the neural network models. 
 
 The command below tests LDA on the Bibsonomy dataset with number of topics as 200 and number of similar documents as 1, using 10-fold cross-validaion.
