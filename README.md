@@ -19,13 +19,15 @@ JMAN (illustrated below) takes both the title and the sentences in content of a 
 * [TFLearn](http://tflearn.org/)
 * [scikit-learn](http://scikit-learn.github.io/stable), especially ```sklearn.multiclass.OneVsRestClassifier``` and ```sklearn.svm.SVC```, for SVM-ovr.
 * [gensim](https://radimrehurek.com/gensim/), especially ```gensim.models.wrappers.LdaMallet``` for LDA.
+* [scikit-multilearn](http://scikit.ml/), for MEKA wrapper to implement CC, HOMER, PLST.
+* [MEKA](https://waikato.github.io/meka/), for CC, HOMER, PLST (MEKA is based on [WEKA](https://www.cs.waikato.ac.nz/ml/weka/) and [MULAN](http://mulan.sourceforge.net/)).
 
 # Content
 * ```./0 JMAN/JMAN_train.py``` contains code for configuration and training
 * ```./0 JMAN/JMAN_model.py``` contains the computational graph, loss function and optimisation
 * ```./0 JMAN/data_util.py``` contains code for input and target generation
 * ```./1 BiGRU/``` (Bi-directional Gated Recurrent Unit) and ```./2 HAN/``` (Hierarchical Attention Network) have a similar structure as in ```./0 JMAN/```
-* ```./3 LDA/``` (Latent Dirichlet Allocation) and ```./4 SVM-ovr/``` (Support Vector Machine one-versus-rest for multilabel classification), each contains the main code and the utility code.
+* ```./3 LDA/``` (Latent Dirichlet Allocation),  ```./4 SVM-ovr/``` (Support Vector Machine one-versus-rest for multilabel classification), ```./5 CC/``` (Classifier Chains), ```./6 HOMER/``` (Hierarchy Of Multilabel classifiER), and ```./7 PLST/``` (Principle Label Space Transformation), each contains the main code and the utility code.
 * ```./embeddings``` contains self-trained word2vec embeddings
 * ```./datasets``` contains the datasets used
 * ```./knowledge_bases``` contains knowledge sources used for label subsumption relations
