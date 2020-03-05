@@ -1,8 +1,3 @@
-# partly adapted from the https://github.com/brightmart/text_classification/tree/master/a05_HierarchicalAttentionNetwork
-
-# author: Hang Dong
-# last updated: 14 June 2019
-
 # -*- coding: utf-8 -*-
 #training the model.
 #process--->1.load data(X:list of lint,y:int). 2.create session. 3.feed data. 4.training (5.validation) ,(6.prediction)
@@ -36,6 +31,7 @@ start_time = time.time()
 #configuration
 FLAGS=tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string("dataset","bibsonomy-clean","dataset to chose") # two options: "bibsonomy-clean" and "zhihu-sample"
+#tf.app.flags.DEFINE_string("dataset","zhihu-sample","dataset to chose") # two options: "bibsonomy-clean" and "zhihu-sample"
 
 tf.app.flags.DEFINE_float("learning_rate",0.01,"learning rate")
 tf.app.flags.DEFINE_integer("batch_size", 128, "Batch size for training/evaluating.") # We applied 128 for Bibsonomy and 1024 for Zhihu.
@@ -54,6 +50,8 @@ tf.app.flags.DEFINE_float("label_sim_threshold",0,"similarity value below this t
 tf.app.flags.DEFINE_float("lambda_sim",0,"the lambda for sem-loss.")
 tf.app.flags.DEFINE_float("lambda_sub",0,"the lambda for sub-loss.")
 #tf.app.flags.DEFINE_string("cache_path","text_cnn_checkpoint/data_cache.pik","checkpoint location for the model")
+tf.app.flags.DEFINE_boolean("dynamic_sem",False,"whether to finetune the sim and sub matrices during training.")
+tf.app.flags.DEFINE_boolean("dynamic_sem_l2",False,"whether to L2 regularise while finetuning the sim and sub matrices during training.")
 
 #for simulating missing labels
 tf.app.flags.DEFINE_float("keep_label_percent",1,"the percentage of labels in each instance of the training data to be randomly reserved, the rest labels are dropped to simulate the missing label scenario.")
@@ -80,10 +78,11 @@ tf.app.flags.DEFINE_string("emb_model_path_zhihu","../embeddings/tag_all.bin-300
 tf.app.flags.DEFINE_string("emb_model_path_cua","../embeddings/tag-citeulike-a-all.bin-300","pre-trained model from cua labels")
 tf.app.flags.DEFINE_string("emb_model_path_cut","../embeddings/tag-citeulike-t-all.bin-300","pre-trained model from cut labels")
 
-tf.app.flags.DEFINE_string("kb_bib","../knowledge_bases/bibsonomy_mcg5_cleaned.csv","labels matched to Microsoft Concept Graph relations for bib data") # for bibsonomy dataset
+tf.app.flags.DEFINE_string("kb_dbpedia_path","../knowledge_bases/bibsonomy_skos_withredir_pw_candidts_all_labelled.csv","labels matched to DBpedia skos and redir relations") # for bibsonomy dataset
+tf.app.flags.DEFINE_string("kb_bib","../knowledge_bases/bibsonomy_mcg5_cleaned.csv","labels matched to Microsoft Concept Graph relations") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("kb_zhihu","../knowledge_bases/zhihu_kb.csv","label relations for zhihu data") # for zhihu dataset
-tf.app.flags.DEFINE_string("kb_cua","../knowledge_bases/citeulike-a-mcg-kb.csv","label matched to Microsoft Concept Graph relations for cua data") # for cua dataset
-tf.app.flags.DEFINE_string("kb_cut","../knowledge_bases/citeulike-t-mcg-kb.csv","label matched to Microsoft Concept Graph relations for cut data") # for cut dataset
+tf.app.flags.DEFINE_string("kb_cua","../knowledge_bases/citeulike-a-mcg-kb.csv","label relations for cua data") # for cua dataset
+tf.app.flags.DEFINE_string("kb_cut","../knowledge_bases/citeulike-t-mcg-kb.csv","label relations for cut data") # for cut dataset
 
 tf.app.flags.DEFINE_boolean("multi_label_flag",True,"use multi label or single label.")
 tf.app.flags.DEFINE_integer("num_sentences", 10, "number of sentences in the document")
@@ -95,9 +94,12 @@ tf.app.flags.DEFINE_float("ave_labels_per_doc",11.59,"average labels per documen
 tf.app.flags.DEFINE_integer("topk",5,"using top-k predicted labels for evaluation")
 
 tf.app.flags.DEFINE_string("variations","JMAN","downgraded variations of the model JMAN: JMAN-s, JMAN-s-att, JMAN-s-tg") # downgraded variations of the model JMAN, there are 3 options: JMAN-s, JMAN-s-att, JMAN-s-tg
-# JMAN-s,       no semantic-based loss regularisers
-# JMAN-s-att,   no semantic-based loss regularisers & no original sentence-level attention mechanism
-# JMAN-s-tg,    no semantic-based loss regularisers & no title-guided sentence-level attention mechanism
+# JMAN-s,          no semantic-based loss regularisers
+# JMAN-s-att,      no semantic-based loss regularisers & no original sentence-level attention mechanism
+# JMAN-s-tg,       no semantic-based loss regularisers & no title-guided sentence-level attention mechanism
+# JMAN-s+t-only,   no semantic-based loss regularisers & only title information
+# JMAN-s+tg-only,  no semantic-based loss regularisers & only title-guided sentence-level attention mechanism
+# JMAN-s+att-only, no semantic-based loss regularisers & only original sentence-level attention mechanism
 # unrecognisable settings will go with the default setting JMAN
 
 #1.load data(X:list of lint,y:int). 2.create session. 3.feed data. 4.training (5.validation) ,(6.prediction)
@@ -125,7 +127,7 @@ def main(_):
         label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_bib,name_scope='bib');print('using bib-mcg relations') # 101084
         
         #configurations:
-        FLAGS.batch_size = 128
+        #FLAGS.batch_size = 128
         FLAGS.sequence_length = 300
         FLAGS.sequence_length_title = 30
         FLAGS.num_sentences = 10 #length of sentence 30
@@ -148,7 +150,7 @@ def main(_):
         label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_zhihu,name_scope='zhihu');print('using zhihu relations')
         
         #configurations:
-        FLAGS.batch_size = 1024
+        #FLAGS.batch_size = 1024
         FLAGS.sequence_length = 100
         FLAGS.sequence_length_title = 25
         FLAGS.num_sentences = 4 #length of sentence 25
@@ -156,7 +158,7 @@ def main(_):
         #FLAGS.lambda_sim = 0.001 # lambda1
         #FLAGS.lambda_sub = 0.0001 # lambda2
         FLAGS.topk = 2
-        
+    
     elif FLAGS.dataset == "citeulike-a-clean":
         word2vec_model_path = FLAGS.word2vec_model_path_cua
         traning_data_path = FLAGS.training_data_path_cua
@@ -176,8 +178,8 @@ def main(_):
         FLAGS.sequence_length_title = 30
         FLAGS.num_sentences = 10 #length of sentence 30
         FLAGS.ave_labels_per_doc = 11.6
-        #FLAGS.lambda_sim = 0.0001 # lambda1
-        #FLAGS.lambda_sub = 0.1 # lambda2
+        #FLAGS.lambda_sim = 0.000001 # lambda1
+        #FLAGS.lambda_sub = 0.0001 # lambda2
         FLAGS.topk = 50
         #FLAGS.early_stop_lr = 0.001
     
@@ -210,10 +212,10 @@ def main(_):
         sys.exit()
         
     # variations: for "JMAN-s", "JMAN-s-att" and "JMAN-s-tg", do not use any semantic-based loss regularisers.
-    if FLAGS.variations == "JMAN-s" or FLAGS.variations == "JMAN-s-att" or FLAGS.variations == "JMAN-s-tg":
+    if FLAGS.variations == "JMAN-s" or FLAGS.variations == "JMAN-s-att" or FLAGS.variations == "JMAN-s-tg" or FLAGS.variations == "JMAN-s+t-only" or FLAGS.variations == "JMAN-s+tg-only" or FLAGS.variations == "JMAN-s+att-only":
         FLAGS.lambda_sim = 0 # lambda1
         FLAGS.lambda_sub = 0 # lambda2
-    FLAGS.marking_id = FLAGS.marking_id + "-" + FLAGS.variations
+    FLAGS.marking_id = FLAGS.marking_id + "-" + FLAGS.variations # will record the variation setting to the output file names
     
     num_classes=len(vocabulary_word2index_label)
     print(vocabulary_index2word_label[0],vocabulary_index2word_label[1])
@@ -249,10 +251,10 @@ def main(_):
     
     #2.create session.
     config=tf.ConfigProto()
-    config.gpu_options.allow_growth=True
+    config.gpu_options.allow_growth=False
     with tf.Session(config=config) as sess:
         #Instantiate Model
-        model=JMAN(num_classes, FLAGS.learning_rate, FLAGS.batch_size, FLAGS.decay_steps, FLAGS.decay_rate,FLAGS.sequence_length, FLAGS.sequence_length_title,FLAGS.num_sentences,vocab_size,FLAGS.embed_size,FLAGS.hidden_size,FLAGS.is_training,FLAGS.lambda_sim,FLAGS.lambda_sub,FLAGS.variations,multi_label_flag=FLAGS.multi_label_flag)
+        model=JMAN(num_classes, FLAGS.learning_rate, FLAGS.batch_size, FLAGS.decay_steps, FLAGS.decay_rate,FLAGS.sequence_length, FLAGS.sequence_length_title,FLAGS.num_sentences,vocab_size,FLAGS.embed_size,FLAGS.hidden_size,FLAGS.is_training,FLAGS.lambda_sim,FLAGS.lambda_sub,FLAGS.variations,FLAGS.dynamic_sem,FLAGS.dynamic_sem_l2,multi_label_flag=FLAGS.multi_label_flag)
         
         num_runs = len(trainlist)
         #validation results variables
@@ -303,6 +305,8 @@ def main(_):
                 sess.run(tf.global_variables_initializer()) # which initialise parameters
                 if FLAGS.use_embedding: #load pre-trained word embedding
                     assign_pretrained_word_embedding(sess, vocabulary_index2word, vocab_size, model,num_run,word2vec_model_path=word2vec_model_path)
+                if FLAGS.dynamic_sem:
+                    assign_sim_sub_matrices(sess,FLAGS.lambda_sim,FLAGS.lambda_sub,label_sim_mat,label_sub_mat,model)
             #print('loaded Uw', sess.run(model.context_vecotor_word))
             curr_epoch=sess.run(model.epoch_step) # staring at 0; after restoring, the parameters are initialised.
             #3.feed data & training
@@ -329,11 +333,20 @@ def main(_):
                         feed_dict[model.input_y] = trainY[start:end]
                     else:
                         feed_dict[model.input_y_multilabel]=trainY[start:end]
-                    feed_dict[model.label_sim_matrix]=label_sim_mat
-                    feed_dict[model.label_sub_matrix]=label_sub_mat
+                    feed_dict[model.label_sim_matrix_static]=label_sim_mat
+                    feed_dict[model.label_sub_matrix_static]=label_sub_mat
                     # now we start training
-                    curr_summary_l,curr_summary_l_epoch,curr_summary_ce,curr_summary_l2,curr_summary_sim,curr_summary_sub,curr_loss,curr_loss_ce,curr_l2_losses,curr_sim_loss,curr_sub_loss,curr_acc,curr_prec,curr_rec,_=sess.run([model.training_loss,model.training_loss_per_epoch,model.training_loss_ce,model.training_l2loss,model.training_sim_loss,model.training_sub_loss,model.loss_val,model.loss_ce,model.l2_losses,model.sim_loss,model.sub_loss,model.accuracy,model.precision,model.recall,model.train_op],feed_dict)
+                    curr_summary_l,curr_summary_l_epoch,curr_summary_ce,curr_summary_l2,curr_summary_sim,curr_summary_sub,curr_loss,curr_loss_ce,curr_l2_losses,curr_sim_loss,curr_sub_loss,curr_acc,curr_prec,curr_rec,label_sim_mat_updated,label_sub_mat_updated,_=sess.run([model.training_loss,model.training_loss_per_epoch,model.training_loss_ce,model.training_l2loss,model.training_sim_loss,model.training_sub_loss,model.loss_val,model.loss_ce,model.l2_losses,model.sim_loss,model.sub_loss,model.accuracy,model.precision,model.recall,model.label_sim_matrix,model.label_sub_matrix,model.train_op],feed_dict)
                     
+                    if FLAGS.dynamic_sem == True:
+                        # # check the amount of changes
+                        print('sim_absolute_update_sum:',np.sum(np.absolute(label_sim_mat - label_sim_mat_updated)))
+                        print('sub_absolute_update_sum:',np.sum(np.absolute(label_sub_mat - label_sub_mat_updated)))
+                        label_sim_mat = label_sim_mat_updated
+                        label_sub_mat = label_sub_mat_updated
+                        print("label_sim_mat[0]-updated:",label_sim_mat[0])
+                        print("label_sub_mat[0]-updated:",label_sub_mat[0])
+                        
                     curr_step=curr_step+1
                     model.writer.add_summary(curr_summary_l,curr_step)
                     model.writer.add_summary(curr_summary_ce,curr_step)
@@ -564,7 +577,7 @@ def main(_):
     #output the result to a file
     output_test = output_test + "\n" + "JMAN==>Final Test results Test Loss:%.3f ± %.3f (%.3f - %.3f)\tTest Loss_CE:%.3f ± %.3f (%.3f - %.3f)\tTest Loss_L2:%.3f ± %.3f (%.3f - %.3f)\tTest Loss_sim:%.3f ± %.3f (%.3f - %.3f)\tTest Loss_sub:%.3f ± %.3f (%.3f - %.3f)\tTest Accuracy: %.3f ± %.3f (%.3f - %.3f)\tTest Hamming Loss: %.3f ± %.3f (%.3f - %.3f)\tTest Precision: %.3f ± %.3f (%.3f - %.3f)\tTest Recall: %.3f ± %.3f (%.3f - %.3f)\tTest F-measure: %.3f ± %.3f (%.3f - %.3f)\tTest Accuracy@k: %.3f ± %.3f (%.3f - %.3f)\tTest Hamming Loss@k: %.3f ± %.3f (%.3f - %.3f)\tTest Precision@k: %.3f ± %.3f (%.3f - %.3f)\tTest Recall@k: %.3f ± %.3f (%.3f - %.3f)\tTest F-measure@k: %.3f ± %.3f (%.3f - %.3f)" % (final_test_loss,std_test_loss,min_test_loss,max_test_loss,final_test_loss_ce,std_test_loss_ce,min_test_loss_ce,max_test_loss_ce,final_test_l2loss,std_test_l2loss,min_test_l2loss,max_test_l2loss,final_test_sim_loss,std_test_sim_loss,min_test_sim_loss,max_test_sim_loss,final_test_sub_loss,std_test_sub_loss,min_test_sub_loss,max_test_sub_loss,final_test_acc_th,std_test_acc_th,min_test_acc_th,max_test_acc_th,final_test_hamming_loss_th,std_test_hamming_loss_th,min_test_hamming_loss_th,max_test_hamming_loss_th,final_test_prec_th,std_test_prec_th,min_test_prec_th,max_test_prec_th,final_test_rec_th,std_test_rec_th,min_test_rec_th,max_test_rec_th,final_test_fmeasure_th,std_test_fmeasure_th,min_test_fmeasure_th,max_test_fmeasure_th,final_test_acc_topk,std_test_acc_topk,min_test_acc_topk,max_test_acc_topk,final_test_hamming_loss_topk,std_test_hamming_loss_topk,min_test_hamming_loss_topk,max_test_hamming_loss_topk,final_test_prec_topk,std_test_prec_topk,min_test_prec_topk,max_test_prec_topk,final_test_rec_topk,std_test_rec_topk,min_test_rec_topk,max_test_rec_topk,final_test_fmeasure_topk,std_test_fmeasure_topk,min_test_fmeasure_topk,max_test_fmeasure_topk) + "\n"
     output_csv_test = output_csv_test + "\n" + "average" + "," + str(round(final_test_loss,3)) + "±" + str(round(std_test_loss,3)) + "," + str(round(final_test_loss_ce,3)) + "±" + str(round(std_test_loss_ce,3)) + "," + str(round(final_test_l2loss,3)) + "±" + str(round(std_test_l2loss,3)) + "," + str(round(final_test_sim_loss,3)) + "±" + str(round(std_test_sim_loss,3)) + "," + str(round(final_test_sub_loss,3)) + "±" + str(round(std_test_sub_loss,3)) + "," + str(round(final_test_hamming_loss_th,3)) + "±" + str(round(std_test_hamming_loss_th,3)) + "," + str(round(final_test_acc_th,3)) + "±" + str(round(std_test_acc_th,3)) + "," + str(round(final_test_prec_th,3)) + "±" + str(round(std_test_prec_th,3)) + "," + str(round(final_test_rec_th,3)) + "±" + str(round(std_test_rec_th,3)) + "," + str(round(final_test_fmeasure_th,3)) + "±" + str(round(std_test_fmeasure_th,3)) + "," + str(round(final_test_acc_topk,3)) + "±" + str(round(std_test_acc_topk,3)) + "," + str(round(final_test_hamming_loss_topk,3)) + "±" + str(round(std_test_hamming_loss_topk,3)) + "," + str(round(final_test_prec_topk,3)) + "±" + str(round(std_test_prec_topk,3)) + "," + str(round(final_test_rec_topk,3)) + "±" + str(round(std_test_rec_topk,3)) + "," + str(round(final_test_fmeasure_topk,3)) + "±" + str(round(std_test_fmeasure_topk,3))
-    setting = "batch_size: " + str(FLAGS.batch_size) + "\nembed_size: " + str(FLAGS.embed_size) + "\nvalidate_step: " + str(FLAGS.validate_step) + "\nlabel_sim_threshold: " + str(FLAGS.label_sim_threshold) + "\nlambda_sim: " + str(FLAGS.lambda_sim) + "\nlambda_sub: " + str(FLAGS.lambda_sub) + "\nnum_epochs: " + str(FLAGS.num_epochs) + "\nkeep_label_percent: " + str(FLAGS.keep_label_percent) + "\nweight_decay_testing: " + str(FLAGS.weight_decay_testing) + "\nearly_stop_lr: " + str(FLAGS.early_stop_lr)
+    setting = "batch_size: " + str(FLAGS.batch_size) + "\nembed_size: " + str(FLAGS.embed_size) + "\nvalidate_step: " + str(FLAGS.validate_step) + "\nlabel_sim_threshold: " + str(FLAGS.label_sim_threshold) + "\nlambda_sim: " + str(FLAGS.lambda_sim) + "\nlambda_sub: " + str(FLAGS.lambda_sub) + "\nnum_epochs: " + str(FLAGS.num_epochs) + "\nkeep_label_percent: " + str(FLAGS.keep_label_percent) + "\nweight_decay_testing: " + str(FLAGS.weight_decay_testing) + "\nearly_stop_lr: " + str(FLAGS.early_stop_lr) + "\ndynamic_sem: " + str(FLAGS.dynamic_sem) + "\ndynamic_sem_l2: " + str(FLAGS.dynamic_sem_l2)
     print("--- The whole program took %s seconds ---" % (time.time() - start_time))
     time_used = "--- The whole program took %s seconds ---" % (time.time() - start_time)
     if FLAGS.kfold != -1:
@@ -619,7 +632,17 @@ def assign_pretrained_word_embedding(sess,vocabulary_index2word,vocab_size,model
     if num_run==0:
         print("word. exists embedding:", count_exist, " ;word not exist embedding:", count_not_exist)
         print("using pre-trained word emebedding.ended...")
-        
+
+def assign_sim_sub_matrices(sess,lambda_sim,lambda_sub,label_sim_mat,label_sub_mat,model):
+    if lambda_sim != 0:
+        label_sim_mat_tf = tf.constant(label_sim_mat, dtype=tf.float32)  # convert to tensor
+        t_assign_sim = tf.assign(model.label_sim_matrix,label_sim_mat_tf)  # assign this value to our embedding variables of our model.
+        sess.run(t_assign_sim)
+    if lambda_sub != 0:
+        label_sub_mat_tf = tf.constant(label_sub_mat, dtype=tf.float32)  # convert to tensor
+        t_assign_sub = tf.assign(model.label_sub_matrix,label_sub_mat_tf)
+        sess.run(t_assign_sub)
+    
 def do_eval(sess,modelToEval,evalX,evalY,batch_size,vocabulary_index2word_label):
     number_examples=len(evalX)
     eval_loss,eval_acc,eval_counter=0.0,0.0,0
@@ -655,7 +678,7 @@ def do_eval_multilabel_threshold(sess,modelToEval,label_sim_mat,label_sub_mat,ev
     eval_loss,eval_loss_ce,eval_l2loss,eval_sim_loss,eval_sub_loss,eval_acc_th,eval_prec_th,eval_rec_th,eval_fmeasure_th,eval_acc_topk,eval_prec_topk,eval_rec_topk,eval_fmeasure_topk,eval_hamming_loss_th,eval_hamming_loss_topk,eval_counter=0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
     eval_step=epoch*(number_examples//batch_size)
     for start,end in zip(range(0,number_examples,batch_size),range(batch_size,number_examples,batch_size)):
-        feed_dict = {modelToEval.input_x: evalX[start:end],modelToEval.input_x_title: evalX_title[start:end], modelToEval.dropout_keep_prob: 1, modelToEval.label_sim_matrix:label_sim_mat, modelToEval.label_sub_matrix:label_sub_mat}
+        feed_dict = {modelToEval.input_x: evalX[start:end],modelToEval.input_x_title: evalX_title[start:end], modelToEval.dropout_keep_prob: 1, modelToEval.label_sim_matrix_static:label_sim_mat, modelToEval.label_sub_matrix_static:label_sub_mat}
         #if (start==0):
         #    print(evalX[start:end])
         if not FLAGS.multi_label_flag:
@@ -753,7 +776,7 @@ def display_for_qualitative_evaluation(sess,modelToEval,label_sim_mat,label_sub_
         x_chosen=rn.randint(0,batch_size)
         rn_dict[(batch_chosen*batch_size,x_chosen)]=1
     for start,end in zip(range(0,number_examples,batch_size),range(batch_size,number_examples,batch_size)):
-        feed_dict = {modelToEval.input_x: evalX[start:end],modelToEval.input_x_title: evalX_title[start:end], modelToEval.dropout_keep_prob: 1, modelToEval.label_sim_matrix:label_sim_mat, modelToEval.label_sub_matrix:label_sub_mat}
+        feed_dict = {modelToEval.input_x: evalX[start:end],modelToEval.input_x_title: evalX_title[start:end], modelToEval.dropout_keep_prob: 1, modelToEval.label_sim_matrix_static:label_sim_mat, modelToEval.label_sub_matrix_static:label_sub_mat}
         #if (start==0):
         #    print(evalX[start:end])
         if not FLAGS.multi_label_flag:
@@ -765,15 +788,27 @@ def display_for_qualitative_evaluation(sess,modelToEval,label_sim_mat,label_sub_
         #also obtain sentence and word level attention weights
         if FLAGS.variations == 'JMAN-s' or FLAGS.variations == 'JMAN':
             sent_att,tg_sent_att,word_att,word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention,modelToEval.p_attention_title,modelToEval.p_attention_word,modelToEval.p_attention_word_title,modelToEval.loss_val,modelToEval.logits],feed_dict)#curr_eval_acc--->modelToEval.accuracy
+            word_att = np.reshape(word_att, (batch_size,FLAGS.sequence_length))
         elif FLAGS.variations == 'JMAN-s-tg':
             sent_att,word_att,word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention,modelToEval.p_attention_word,modelToEval.p_attention_word_title,modelToEval.loss_val,modelToEval.logits],feed_dict)
+            word_att = np.reshape(word_att, (batch_size,FLAGS.sequence_length))
         elif FLAGS.variations == 'JMAN-s-att':
             tg_sent_att,word_att,word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention_title,modelToEval.p_attention_word,modelToEval.p_attention_word_title,modelToEval.loss_val,modelToEval.logits],feed_dict)
+            word_att = np.reshape(word_att, (batch_size,FLAGS.sequence_length))
+        elif FLAGS.variations == 'JMAN-s+t-only':
+            word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention_word_title,modelToEval.loss_val,modelToEval.logits],feed_dict)
+        elif FLAGS.variations == 'JMAN-s+tg-only':
+            tg_sent_att,word_att,curr_eval_loss,logits= sess.run([modelToEval.p_attention_title,modelToEval.p_attention_word,modelToEval.loss_val,modelToEval.logits],feed_dict)
+            word_att = np.reshape(word_att, (batch_size,FLAGS.sequence_length))
+        elif FLAGS.variations == 'JMAN-s+att-only':
+            sent_att,word_att,curr_eval_loss,logits= sess.run([modelToEval.p_attention,modelToEval.p_attention_word,modelToEval.loss_val,modelToEval.logits],feed_dict)
+            word_att = np.reshape(word_att, (batch_size,FLAGS.sequence_length))
         else: # default as 'JMAN'
             sent_att,tg_sent_att,word_att,word_att_title,curr_eval_loss,logits= sess.run([modelToEval.p_attention,modelToEval.p_attention_title,modelToEval.p_attention_word,modelToEval.p_attention_word_title,modelToEval.loss_val,modelToEval.logits],feed_dict)#curr_eval_acc--->modelToEval.accuracy
+            word_att = np.reshape(word_att, (batch_size,FLAGS.sequence_length))
         #print('word_att',word_att)
         #print('word_att:',word_att.shape)
-        word_att = np.reshape(word_att, (batch_size,FLAGS.sequence_length))
+        #word_att = np.reshape(word_att, (batch_size,FLAGS.sequence_length))
         #print('word_att',word_att)
         #print('word_att:',word_att.shape)
         #print('word_att_title',word_att_title)
@@ -790,7 +825,10 @@ def display_for_qualitative_evaluation(sess,modelToEval,label_sim_mat,label_sub_
                 # get_indexes = lambda x, xs: [i for (y, i) in zip(xs, range(len(xs))) if x == y]
                 # print('labels:',*display_results(get_indexes(1,evalY[start+x]),vocabulary_index2word_label))
                 #tit = 'title: ' + ' '.join(display_results(evalX_title[start+x],vocabulary_index2word))
-                tit = 'title: ' + ' '.join(display_results_with_word_att(evalX_title[start+x],vocabulary_index2word,word_att_title[x]))
+                if FLAGS.variations != 'JMAN-s+tg-only' and FLAGS.variations != 'JMAN-s+att-only':
+                    tit = 'title: ' + ' '.join(display_results_with_word_att(evalX_title[start+x],vocabulary_index2word,word_att_title[x]))
+                else:
+                    tit = 'title (unused): ' + ' '.join(display_results_with_word_att(evalX_title[start+x],vocabulary_index2word,'')) # no title attention weights to be displayed for tg-only or att-only.
                 #abs = 'abstract: ' + ' '.join(display_results_with_sent(evalX[start+x],vocabulary_index2word))
                 # record the sentence-level attention weights
                 if FLAGS.variations == 'JMAN-s' or FLAGS.variations == 'JMAN':
@@ -805,6 +843,12 @@ def display_for_qualitative_evaluation(sess,modelToEval,label_sim_mat,label_sub_
                     #ori_sent_att = 'ori_sent_att:' + '--'
                     #title_guided_sent_att = 'tg_sent_att:' + np.array2string(tg_sent_att[x], formatter={'float_kind':lambda x: "%.3f" % x})
                     abs = 'abstract: ' + ' '.join(display_results_with_word_att_sent_att(evalX[start+x],vocabulary_index2word,word_att[x],tg_sent_att[x],'tg'))
+                elif FLAGS.variations == 'JMAN-s+t-only':
+                    abs = 'abstract (unused): ' + ' '.join(display_results_with_word_att_sent_att(evalX[start+x],vocabulary_index2word,'','',''))
+                elif FLAGS.variations == 'JMAN-s+tg-only':
+                    abs = 'abstract: ' + ' '.join(display_results_with_word_att_sent_att(evalX[start+x],vocabulary_index2word,word_att[x],tg_sent_att[x],'tg'))
+                elif FLAGS.variations == 'JMAN-s+att-only':
+                    abs = 'abstract: ' + ' '.join(display_results_with_word_att_sent_att(evalX[start+x],vocabulary_index2word,word_att[x],sent_att[x],'ori'))
                 else: # default as 'JMAN'
                     #ori_sent_att = 'ori_sent_att:' + np.array2string(sent_att[x], formatter={'float_kind':lambda x: "%.3f" % x})
                     #title_guided_sent_att = 'tg_sent_att:' + np.array2string(tg_sent_att[x], formatter={'float_kind':lambda x: "%.3f" % x})
@@ -860,11 +904,15 @@ def display_results_with_sent(index_list,vocabulary_index2word_label):
 def display_results_with_word_att(index_list,vocabulary_index2word_label,word_att_title):
     label_list=[]
     count = 1
+    #print('word_att_title is an empty str? ', word_att_title == '') # for testing
     for index in index_list:
         if index!=0: # this ensures that the padded values not being displayed.
             label=vocabulary_index2word_label[index]
             #label_list.append(label)
-            label_list.append(label + '(' + str(round(word_att_title[count-1],3)) + ')')     
+            if word_att_title != '': # if the title-word attention weights do not exist, then just display the words.
+                label_list.append(label + '(' + str(round(word_att_title[count-1],3)) + ')') 
+            else:
+                label_list.append(label)
         count = count + 1        
     return label_list
     
@@ -872,14 +920,22 @@ def display_results_with_word_att(index_list,vocabulary_index2word_label,word_at
 def display_results_with_word_att_sent_att(index_list,vocabulary_index2word_label,word_att,sent_att,att_note):
     label_list=[]
     count = 1
+    #print('word_att is an empty str? ', word_att == '') # for testing
+    #print('sent_att is an empty str? ', sent_att == '') # for testing                    
     for index in index_list:
         if index!=0: # this ensures that the padded values not being displayed.
             label=vocabulary_index2word_label[index]
             #label_list.append(label)
-            label_list.append(label + '(' + str(round(word_att[count-1],3)) + ')')            
+            if word_att != '': #FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+                label_list.append(label + '(' + str(round(word_att[count-1],3)) + ')')
+            else:
+                label_list.append(label)
         if count % (FLAGS.sequence_length/FLAGS.num_sentences) == 0:
             sent_index = int(count / (FLAGS.sequence_length/FLAGS.num_sentences))
-            label_list.append('/s' + str(int(sent_index)) + '(' + att_note + '-' + str(round(sent_att[sent_index-1],2)) + ')/' + '\n')
+            if sent_att != '':
+                label_list.append('/s' + str(int(sent_index)) + '(' + att_note + '-' + str(round(sent_att[sent_index-1],2)) + ')/' + '\n')
+            else:
+                label_list.append('/s' + str(int(sent_index)) + '\n')
         count = count + 1
     return label_list
 

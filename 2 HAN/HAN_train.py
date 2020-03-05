@@ -1,7 +1,3 @@
-# partly adapted from the https://github.com/brightmart/text_classification/tree/master/a05_HierarchicalAttentionNetwork
-
-# last updated: 14 June 2019
-
 # -*- coding: utf-8 -*-
 #training the model.
 #process--->1.load data(X:list of lint,y:int). 2.create session. 3.feed data. 4.training (5.validation) ,(6.prediction)
@@ -35,23 +31,27 @@ start_time = time.time()
 #configuration
 FLAGS=tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string("dataset","bibsonomy-clean","dataset to chose") # two options: "bibsonomy-clean" and "zhihu-sample"
+#tf.app.flags.DEFINE_string("dataset","zhihu-sample","dataset to chose") # two options: "bibsonomy-clean" and "zhihu-sample"
 
 tf.app.flags.DEFINE_float("learning_rate",0.01,"learning rate") #TODO 0.01
-tf.app.flags.DEFINE_integer("batch_size", 1024, "Batch size for training/evaluating.")
-tf.app.flags.DEFINE_integer("decay_steps", 6000, "how many steps before decay learning rate.")
-tf.app.flags.DEFINE_float("decay_rate", 1.0, "Rate of decay for learning rate.")
+tf.app.flags.DEFINE_integer("batch_size", 128, "Batch size for training/evaluating.") #批处理的大小 32-->128 #TODO
+tf.app.flags.DEFINE_integer("decay_steps", 6000, "how many steps before decay learning rate.") #6000批处理的大小 32-->128
+tf.app.flags.DEFINE_float("decay_rate", 1.0, "Rate of decay for learning rate.") #0.87一次衰减多少
 tf.app.flags.DEFINE_string("ckpt_dir","checkpoint_hier_atten_title4/","checkpoint location for the model")
 tf.app.flags.DEFINE_integer("sequence_length",300,"max sentence length")
 tf.app.flags.DEFINE_integer("embed_size",100,"embedding size")
 tf.app.flags.DEFINE_boolean("is_training",True,"is traning.true:tranining,false:testing/inference")
 tf.app.flags.DEFINE_integer("num_epochs",100,"number of epochs to run.")
-tf.app.flags.DEFINE_integer("validate_every", 1, "Validate every validate_every epochs.")
-tf.app.flags.DEFINE_integer("validate_step", 1000, "how many step to validate.") #TODO [this validation is also for decaying the learning rate based on the evaluation loss]
+tf.app.flags.DEFINE_integer("validate_every", 1, "Validate every validate_every epochs.") #每10轮做一次验证
+tf.app.flags.DEFINE_integer("validate_step", 1000, "how many step to validate.") #1500做一次检验 TODO [this validation is also for decaying the learning rate based on the evaluation loss]
 tf.app.flags.DEFINE_boolean("use_embedding",True,"whether to use embedding or not.")
 tf.app.flags.DEFINE_float("label_sim_threshold",0,"similarity value below this threshold will be set as 0.")
 tf.app.flags.DEFINE_float("lambda_sim",0,"the lambda for sim-loss.")
 tf.app.flags.DEFINE_float("lambda_sub",0,"the lambda for sub-loss.")
 #tf.app.flags.DEFINE_string("cache_path","text_cnn_checkpoint/data_cache.pik","checkpoint location for the model")
+#train-zhihu4-only-title-all.txt
+tf.app.flags.DEFINE_boolean("dynamic_sem",False,"whether to finetune the sim and sub matrices during training.")
+tf.app.flags.DEFINE_boolean("dynamic_sem_l2",False,"whether to L2 regularise while finetuning the sim and sub matrices during training.")
 
 #for simulating missing labels
 tf.app.flags.DEFINE_float("keep_label_percent",1,"the percentage of labels in each instance of the training data to be randomly reserved, the rest labels are dropped to simulate the missing label scenario.")
@@ -62,7 +62,7 @@ tf.app.flags.DEFINE_string("training_data_path_zhihu","../datasets/question_trai
 tf.app.flags.DEFINE_string("training_data_path_cua","../datasets/citeulike_a_cleaned_th10_for_HAN.txt","path of traning data.") # for cua dataset
 tf.app.flags.DEFINE_string("training_data_path_cut","../datasets/citeulike_t_cleaned_th10_for_HAN.txt","path of traning data.") # for cut dataset
 
-tf.app.flags.DEFINE_float("valid_portion",0.1,"dev set or test set portion") # this is only used when kfold is -1, which means we hold out a fixed set for validation. If we set this as 0.1, then there will be 0.81 0.09 0.1 for train-valid-test split (same as the split of 10-fold cross-validation); if we set this as 0.111, then there will be 0.8 0.1 0.1 for train-valid-test split. 
+tf.app.flags.DEFINE_float("valid_portion",0.1,"dev set or test set portion") # this is only valid when kfold is -1, which means we hold out a fixed set for validation. If we set this as 0.1, then there will be 0.81 0.09 0.1 for train-valid-test split (same as the split of 10-fold cross-validation); if we set this as 0.111, then there will be 0.8 0.1 0.1 for train-valid-test split. 
 tf.app.flags.DEFINE_float("test_portion",0.1,"held-out evaluation: test set portion")
 tf.app.flags.DEFINE_integer("kfold",10,"k-fold cross-validation") # if k is -1, then not using kfold cross-validation
 
@@ -78,7 +78,8 @@ tf.app.flags.DEFINE_string("emb_model_path_zhihu","../embeddings/tag_all.bin-300
 tf.app.flags.DEFINE_string("emb_model_path_cua","../embeddings/tag-citeulike-a-all.bin-300","pre-trained model from cua labels")
 tf.app.flags.DEFINE_string("emb_model_path_cut","../embeddings/tag-citeulike-t-all.bin-300","pre-trained model from cut labels")
 
-tf.app.flags.DEFINE_string("kb_bib","../knowledge_bases/bibsonomy_mcg5_cleaned.csv","labels matched to Microsoft Concept Graph relations for bib data") # for bibsonomy dataset
+tf.app.flags.DEFINE_string("kb_dbpedia_path","../knowledge_bases/bibsonomy_skos_withredir_pw_candidts_all_labelled.csv","labels matched to DBpedia skos and redir relations") # for bibsonomy dataset
+tf.app.flags.DEFINE_string("kb_MCG_path","../knowledge_bases/bibsonomy_mcg5_cleaned.csv","labels matched to Microsoft Concept Graph relations") # for bibsonomy dataset
 tf.app.flags.DEFINE_string("kb_zhihu","../knowledge_bases/zhihu_kb.csv","label relations for zhihu data") # for zhihu dataset
 tf.app.flags.DEFINE_string("kb_cua","../knowledge_bases/citeulike-a-mcg-kb.csv","label relations for cua data") # for cua dataset
 tf.app.flags.DEFINE_string("kb_cut","../knowledge_bases/citeulike-t-mcg-kb.csv","label relations for cut data") # for cut dataset
@@ -95,7 +96,7 @@ tf.app.flags.DEFINE_integer("topk",5,"using top-k predicted labels for evaluatio
 #1.load data(X:list of lint,y:int). 2.create session. 3.feed data. 4.training (5.validation) ,(6.prediction)
 def main(_):
     #1.load data(X:list of lint,y:int).
-    #if os.path.exists(FLAGS.cache_path):  # 
+    #if os.path.exists(FLAGS.cache_path):  # 如果文件系统中存在，那么加载故事（词汇表索引化的）
     #    with open(FLAGS.cache_path, 'r') as data_f:
     #        trainX, trainY, testX, testY, vocabulary_index2word=pickle.load(data_f)
     #        vocab_size=len(vocabulary_index2word)
@@ -114,7 +115,7 @@ def main(_):
         
         #subsumption relations: using external knowledge bases
         #label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_dbpedia_path,name_scope='dbpedia');print('using DBpedia relations') #use_dbpedia
-        label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_bib,name_scope='bib');print('using bib-mcg relations') # 101084
+        label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_MCG_path,name_scope='mcg');print('using MCG relations') # 101084
         
         #configurations:
         FLAGS.batch_size = 128
@@ -139,14 +140,14 @@ def main(_):
         label_sub_mat = get_label_sub_matrix(vocabulary_word2index_label,kb_path=FLAGS.kb_zhihu,name_scope='zhihu');print('using zhihu relations')
         
         #configurations:
-        FLAGS.batch_size = 1024
+        #FLAGS.batch_size = 1024
         FLAGS.sequence_length = 100
         FLAGS.num_sentences = 4 #length of sentence 25
         FLAGS.ave_labels_per_doc = 2.45
         #FLAGS.lambda_sim = 0 # lambda1
         #FLAGS.lambda_sub = 0 # lambda2
         FLAGS.topk = 2
-    
+        
     elif FLAGS.dataset == "citeulike-a-clean":
         word2vec_model_path = FLAGS.word2vec_model_path_cua
         traning_data_path = FLAGS.training_data_path_cua
@@ -231,12 +232,12 @@ def main(_):
     #2.create session.
     config=tf.ConfigProto()
     #config = tf.ConfigProto(inter_op_parallelism_threads=1, intra_op_parallelism_threads=1)
-    config.gpu_options.allow_growth=True
+    config.gpu_options.allow_growth=False
     with tf.Session(config=config) as sess:
         #Instantiate Model
         #num_classes, learning_rate, batch_size, decay_steps, decay_rate,sequence_length,num_sentences,vocab_size,embed_size,
         #hidden_size,is_training
-        model=HAN(num_classes, FLAGS.learning_rate, FLAGS.batch_size, FLAGS.decay_steps, FLAGS.decay_rate,FLAGS.sequence_length,FLAGS.num_sentences,vocab_size,FLAGS.embed_size,FLAGS.hidden_size,FLAGS.is_training,FLAGS.lambda_sim,FLAGS.lambda_sub,multi_label_flag=FLAGS.multi_label_flag)
+        model=HAN(num_classes, FLAGS.learning_rate, FLAGS.batch_size, FLAGS.decay_steps, FLAGS.decay_rate,FLAGS.sequence_length,FLAGS.num_sentences,vocab_size,FLAGS.embed_size,FLAGS.hidden_size,FLAGS.is_training,FLAGS.lambda_sim,FLAGS.lambda_sub,FLAGS.dynamic_sem,FLAGS.dynamic_sem_l2,multi_label_flag=FLAGS.multi_label_flag)
         
         num_runs = len(trainlist)
         #validation results variables
@@ -285,6 +286,8 @@ def main(_):
                 sess.run(tf.global_variables_initializer()) # which initialise parameters
                 if FLAGS.use_embedding: #load pre-trained word embedding
                     assign_pretrained_word_embedding(sess, vocabulary_index2word, vocab_size, model,num_run,word2vec_model_path=word2vec_model_path)
+                if FLAGS.dynamic_sem:
+                    assign_sim_sub_matrices(sess,FLAGS.lambda_sim,FLAGS.lambda_sub,label_sim_mat,label_sub_mat,model)    
             #print('loaded Uw', sess.run(model.context_vecotor_word))
             curr_epoch=sess.run(model.epoch_step) # after restoring, the parameters are initialised.
             #3.feed data & training
@@ -311,11 +314,20 @@ def main(_):
                         feed_dict[model.input_y] = trainY[start:end]
                     else:
                         feed_dict[model.input_y_multilabel]=trainY[start:end]
-                    feed_dict[model.label_sim_matrix]=label_sim_mat
-                    feed_dict[model.label_sub_matrix]=label_sub_mat
+                    feed_dict[model.label_sim_matrix_static]=label_sim_mat
+                    feed_dict[model.label_sub_matrix_static]=label_sub_mat
                     # now we start training
-                    curr_summary_str,curr_summary_l_epoch,curr_loss,curr_acc,_=sess.run([model.training_loss,model.training_loss_per_epoch,model.loss_val,model.accuracy,model.train_op],feed_dict)#curr_acc--->modelToEval.accuracy
+                    curr_summary_str,curr_summary_l_epoch,curr_loss,curr_acc,label_sim_mat_updated,label_sub_mat_updated,_=sess.run([model.training_loss,model.training_loss_per_epoch,model.loss_val,model.accuracy,model.label_sim_matrix,model.label_sub_matrix,model.train_op],feed_dict)#curr_acc--->modelToEval.accuracy
                     
+                    if FLAGS.dynamic_sem == True:
+                        # # check the amount of changes
+                        #print('sim_absolute_update_sum:',np.sum(np.absolute(label_sim_mat - label_sim_mat_updated)))
+                        #print('sub_absolute_update_sum:',np.sum(np.absolute(label_sub_mat - label_sub_mat_updated)))
+                        label_sim_mat = label_sim_mat_updated
+                        label_sub_mat = label_sub_mat_updated
+                        # print("label_sim_mat[0]-updated:",label_sim_mat[0])
+                        # print("label_sub_mat[0]-updated:",label_sub_mat[0])
+                        
                     curr_step=curr_step+1
                     model.writer.add_summary(curr_summary_str,curr_step)
                     if counter==0:
@@ -513,7 +525,7 @@ def main(_):
     #for key, value in setting_dict.items():
     #    setting = setting + key + ": " + str(value) + '\n'
     #setting:batch_size,embed_size,label_sim_threshold,lambda_sim,lambda_l1sig,weight_decay_testing
-    setting = "batch_size: " + str(FLAGS.batch_size) + "\nembed_size: " + str(FLAGS.embed_size) + "\nvalidate_step: " + str(FLAGS.validate_step) + "\nlabel_sim_threshold: " + str(FLAGS.label_sim_threshold) + "\nlambda_sim: " + str(FLAGS.lambda_sim) + "\nlambda_sub: " + str(FLAGS.lambda_sub) + "\nnum_epochs: " + str(FLAGS.num_epochs) + "\nkeep_label_percent: " + str(FLAGS.keep_label_percent) + "\nweight_decay_testing: " + str(FLAGS.weight_decay_testing) + "\nearly_stop_lr: " + str(FLAGS.early_stop_lr)
+    setting = "batch_size: " + str(FLAGS.batch_size) + "\nembed_size: " + str(FLAGS.embed_size) + "\nvalidate_step: " + str(FLAGS.validate_step) + "\nlabel_sim_threshold: " + str(FLAGS.label_sim_threshold) + "\nlambda_sim: " + str(FLAGS.lambda_sim) + "\nlambda_sub: " + str(FLAGS.lambda_sub) + "\nnum_epochs: " + str(FLAGS.num_epochs) + "\nkeep_label_percent: " + str(FLAGS.keep_label_percent) + "\nweight_decay_testing: " + str(FLAGS.weight_decay_testing) + "\nearly_stop_lr: " + str(FLAGS.early_stop_lr) + "\ndynamic_sem: " + str(FLAGS.dynamic_sem) + "\ndynamic_sem_l2: " + str(FLAGS.dynamic_sem_l2)
     print("--- The whole program took %s seconds ---" % (time.time() - start_time))
     time_used = "--- The whole program took %s seconds ---" % (time.time() - start_time)
     if FLAGS.kfold != -1:
@@ -569,6 +581,16 @@ def assign_pretrained_word_embedding(sess,vocabulary_index2word,vocab_size,model
         print("word. exists embedding:", count_exist, " ;word not exist embedding:", count_not_exist)
         print("using pre-trained word emebedding.ended...")
 
+def assign_sim_sub_matrices(sess,lambda_sim,lambda_sub,label_sim_mat,label_sub_mat,model):
+    if lambda_sim != 0:
+        label_sim_mat_tf = tf.constant(label_sim_mat, dtype=tf.float32)  # convert to tensor
+        t_assign_sim = tf.assign(model.label_sim_matrix,label_sim_mat_tf)  # assign this value to our embedding variables of our model.
+        sess.run(t_assign_sim)
+    if lambda_sub != 0:
+        label_sub_mat_tf = tf.constant(label_sub_mat, dtype=tf.float32)  # convert to tensor
+        t_assign_sub = tf.assign(model.label_sub_matrix,label_sub_mat_tf)
+        sess.run(t_assign_sub)
+        
 # based on a threshold, 在验证集上做验证，报告损失、精确度-multilabel
 def do_eval_multilabel_threshold(sess,modelToEval,label_sim_mat,label_sub_mat,evalX,evalY,batch_size,vocabulary_index2word,vocabulary_index2word_label,epoch,threshold=0.5,display_results_bool=True,hamming_q=FLAGS.ave_labels_per_doc,top_number=FLAGS.topk,record_to_tensorboard=True):
     #print(display_results_bool)

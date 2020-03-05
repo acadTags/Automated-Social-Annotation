@@ -1,7 +1,7 @@
 # partly adapted from the https://github.com/brightmart/text_classification/tree/master/a05_HierarchicalAttentionNetwork
 
 # author: Hang Dong
-# last updated: 14 June 2019
+# last updated: 5 March 2020
 
 # -*- coding: utf-8 -*-
 import tensorflow as tf
@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow.contrib as tf_contrib
 
 class JMAN:
-    def __init__(self, num_classes, learning_rate, batch_size, decay_steps, decay_rate, sequence_length, sequence_length_title, num_sentences,vocab_size, embed_size, hidden_size, is_training, lambda_sim=0.00001, lambda_sub=0, variations="JMAN", multi_label_flag=False, initializer=tf.random_normal_initializer(stddev=0.1),clip_gradients=5.0):#0.01
+    def __init__(self, num_classes, learning_rate, batch_size, decay_steps, decay_rate, sequence_length, sequence_length_title, num_sentences,vocab_size, embed_size, hidden_size, is_training, lambda_sim=0, lambda_sub=0, variations="JMAN", dynamic_sem=False, dynamic_sem_l2=False, multi_label_flag=False, initializer=tf.random_normal_initializer(stddev=0.1),clip_gradients=5.0):#0.01
         """init all hyperparameter here"""
         # set hyperparamter
         self.num_classes = num_classes
@@ -29,6 +29,8 @@ class JMAN:
         self.lambda_sim=lambda_sim
         self.lambda_sub=lambda_sub
         self.variations = variations
+        self.dynamic_sem = dynamic_sem
+        self.dynamic_sem_l2 = dynamic_sem_l2
         
         if self.variations == "JMAN":
             pass
@@ -45,16 +47,33 @@ class JMAN:
         self.input_y_multilabel = tf.placeholder(tf.float32, [None, self.num_classes],name="input_y_multilabel")  # y:[None,num_classes]. this is for multi-label classification only.
         self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
         
-        self.label_sim_matrix = tf.placeholder(tf.float32, [self.num_classes,self.num_classes],name="label_sim_mat")
-        self.label_sub_matrix = tf.placeholder(tf.float32, [self.num_classes,self.num_classes],name="label_sub_mat")
-        
+        self.label_sim_matrix_static = tf.placeholder(tf.float32, [self.num_classes,self.num_classes],name="label_sim_mat_const")
+        self.label_sub_matrix_static = tf.placeholder(tf.float32, [self.num_classes,self.num_classes],name="label_sub_mat_const")
+        #if self.dynamic_sem == True:
+            #self.label_sim_matrix_static = tf.placeholder(tf.float32, [self.num_classes,self.num_classes],name="label_sim_mat")
+            #self.label_sub_matrix_static = tf.placeholder(tf.float32, [self.num_classes,self.num_classes],name="label_sub_mat")
+        #    self.label_sim_matrix_static = self.label_sim_matrix
+        #    self.label_sub_matrix_static = self.label_sub_matrix
+        #else:
+        if self.dynamic_sem == False:
+            self.label_sim_matrix = self.label_sim_matrix_static
+            self.label_sub_matrix = self.label_sub_matrix_static
+        print(self.variations,self.dynamic_sem)
+            
         self.global_step = tf.Variable(0, trainable=False, name="Global_Step")
         self.epoch_step = tf.Variable(0, trainable=False, name="Epoch_Step")
         self.epoch_increment = tf.assign(self.epoch_step, tf.add(self.epoch_step, tf.constant(1)))
         self.decay_steps, self.decay_rate = decay_steps, decay_rate
-
-        self.instantiate_weights()
-
+        
+        self.instantiate_weights() # here the dynamic self.label_sim_matrix and the self.label_sub_matrix are initialised.
+        #print('self.label_sim_matrix_static:',self.label_sim_matrix_static)
+        #print('self.label_sub_matrix_static:',self.label_sub_matrix_static)
+        print('self.label_sim_matrix:',self.label_sim_matrix)
+        print('self.label_sub_matrix:',self.label_sub_matrix)
+        
+        print('display trainable variables')
+        for v in tf.trainable_variables():
+            print(v)
         self.logits = self.inference() #[None, self.label_size]. main computation graph is here.
         
         if not is_training:
@@ -68,17 +87,18 @@ class JMAN:
                 else:
                     # using L_sub only
                     #self.loss_val = self.loss_multilabel_onto_new_sub_per_batch(self.label_sub_matrix); # j,k per batch - used in the NAACL paper
-                    self.loss_val = self.loss_multilabel_onto_new_sub_per_doc(self.label_sub_matrix); # j,k per document
+                    self.loss_val = self.loss_multilabel_onto_new_sub_per_doc(self.label_sub_matrix,dynamic_sem_l2=self.dynamic_sem_l2); # j,k per document
             else:
                 if self.lambda_sub == 0:
                     # using L_sim only
+                    #pair_diff_squared on s_d
                     #self.loss_val = self.loss_multilabel_onto_new_sim_per_batch(self.label_sim_matrix) # j,k per batch - used in the NAACL paper
-                    self.loss_val = self.loss_multilabel_onto_new_sim_per_doc(self.label_sim_matrix) # j,k per document
+                    self.loss_val = self.loss_multilabel_onto_new_sim_per_doc(self.label_sim_matrix,dynamic_sem_l2=self.dynamic_sem_l2) # j,k per document
                     
                 else:
                     # L_sim+L_sub
                     #self.loss_val = self.loss_multilabel_onto_new_simsub_per_batch(self.label_sim_matrix,self.label_sub_matrix) # j,k per batch - used in the NAACL paper
-                    self.loss_val = self.loss_multilabel_onto_new_simsub_per_doc(self.label_sim_matrix,self.label_sub_matrix) # j,k per document
+                    self.loss_val = self.loss_multilabel_onto_new_simsub_per_doc(self.label_sim_matrix,self.label_sub_matrix,dynamic_sem_l2=self.dynamic_sem_l2) # j,k per document
         else:
             print("going to use single label loss.")
             self.loss_val = self.loss()
@@ -123,17 +143,51 @@ class JMAN:
     def instantiate_weights(self): # this is problematic here, the name_scope actually does not affect get_variable.
         """define all weights here"""
         with tf.name_scope("embedding_projection"):  # embedding matrix
-            self.Embedding = tf.get_variable("Embedding", shape=[self.vocab_size, self.embed_size],
-                                             initializer=self.initializer)  # [vocab_size,embed_size] tf.random_uniform([self.vocab_size, self.embed_size],-1.0,1.0)
+            self.Embedding = tf.get_variable("Embedding", shape=[self.vocab_size, self.embed_size],initializer=self.initializer)  # [vocab_size,embed_size] tf.random_uniform([self.vocab_size, self.embed_size],-1.0,1.0)
             if self.variations == "JMAN-s-att" or self.variations == "JMAN-s-tg":
-                self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 6, self.num_classes],
-                                                initializer=self.initializer)  # [embed_size,label_size] # 6 = 2 + 4
+                self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 6, self.num_classes],initializer=self.initializer)  # [embed_size,label_size] # 6 = 2 + 4
+            elif self.variations == "JMAN-s+t-only":
+                self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 2, self.num_classes],initializer=self.initializer)  # [embed_size,label_size]
+                ##a test controlling the hidden size (the two lines below)
+                #self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 4, self.num_classes],initializer=self.initializer)  # [embed_size,label_size]
+                #self.W_projection_h_drop = tf.get_variable("W_projection_h_drop", shape=[self.hidden_size * 2, self.hidden_size * 4],initializer=self.initializer)  # [hidden_size,embed_size]
+            elif self.variations == "JMAN-s+tg-only" or self.variations == "JMAN-s+att-only":
+                self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 4, self.num_classes],initializer=self.initializer)  # [embed_size,label_size]
+                ##a test controlling the hidden size (the two lines below)
+                #self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 10, self.num_classes],initializer=self.initializer)  # [embed_size,label_size]
+                #self.W_projection_h_drop = tf.get_variable("W_projection_h_drop", shape=[self.hidden_size * 4, self.hidden_size * 10],initializer=self.initializer)  # [hidden_size,embed_size]
             else: # default setting, also for "JMAN" and "JMAN-s"
-                self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 10, self.num_classes],
-                                                initializer=self.initializer)  # [embed_size,label_size] # 10 = 2 + 4 + 4
+                self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 10, self.num_classes],initializer=self.initializer)  # [embed_size,label_size] # 10 = 2 + 4 + 4
+                ##a test controlling the hidden size (the two lines below)
+                #self.W_projection = tf.get_variable("W_projection", shape=[self.hidden_size * 4, self.num_classes],initializer=self.initializer)  # [embed_size,label_size]
+                #self.W_projection_h_drop = tf.get_variable("W_projection_h_drop", shape=[self.hidden_size * 10, self.hidden_size * 4],initializer=self.initializer)  # [hidden_size,embed_size]
                                                 
             self.b_projection = tf.get_variable("b_projection", shape=[self.num_classes])  #TODO [label_size]
             
+            if self.variations == "JMAN" and self.dynamic_sem == True:
+                print('intialise dynamic sem loss weights')
+                if self.lambda_sim != 0:
+                    #self.label_sim_matrix = tf.get_variable("label_sim_mat", shape=[self.num_classes, self.num_classes], initializer=self.label_sim_matrix_static)
+                    #self.label_sim_matrix = tf.get_variable("label_sim_mat", initializer=tf.zeros_like(self.label_sim_matrix_static))
+                    #self.label_sim_matrix = tf.assign(self.label_sim_matrix, self.label_sim_matrix_static)
+                    self.label_sim_matrix = tf.get_variable("label_sim_mat", shape=[self.num_classes, self.num_classes], initializer=self.initializer)
+                    #self.label_sim_matrix = tf.assign(self.label_sim_matrix, self.label_sim_matrix_static)
+                    #print('label_sim_matrix initialised as label_sim_matrix_static')
+                    if self.lambda_sub == 0:
+                        self.label_sub_matrix = self.label_sub_matrix_static # as static weights
+                    else:
+                        #self.label_sub_matrix = tf.get_variable("label_sub_mat", initializer=tf.zeros_like(self.label_sub_matrix_static))
+                        #self.label_sub_matrix = tf.assign(self.label_sub_matrix, self.label_sub_matrix_static)
+                        self.label_sub_matrix = tf.get_variable("label_sub_mat", shape=[self.num_classes, self.num_classes], initializer=self.initializer)
+                else:
+                    self.label_sim_matrix = self.label_sim_matrix_static # as static weights
+                    if self.lambda_sub == 0:
+                        self.label_sub_matrix = self.label_sub_matrix_static # as static weights
+                    else:
+                        #self.label_sub_matrix = tf.get_variable("label_sub_mat", initializer=tf.zeros_like(self.label_sub_matrix_static))
+                        #self.label_sub_matrix = tf.assign(self.label_sub_matrix, self.label_sub_matrix_static)
+                        self.label_sub_matrix = tf.get_variable("label_sub_mat", shape=[self.num_classes, self.num_classes], initializer=self.initializer)
+                    
         # GRU parameters:update gate related
         with tf.name_scope("gru_weights_word_level"):
             self.W_z = tf.get_variable("W_z", shape=[self.embed_size, self.hidden_size], initializer=self.initializer)
@@ -483,11 +537,28 @@ class JMAN:
             print('abstract_representation_original', abstract_representation_original.get_shape())
             
             document_representation = tf.concat([title_representation, abstract_representation_original], axis=1) # this is concatenation of title + abs
+        
         elif self.variations == "JMAN-s-att": # without original sentence-level attention mechanism 
             abstract_representation_title_guided = self.attention_sentence_level_title_guided(self.hidden_state_sentence,title_representation)  # shape:[None,hidden_size*4]
             print('abstract_representation_title_guided', abstract_representation_title_guided.get_shape())
     
             document_representation = tf.concat([title_representation, abstract_representation_title_guided], axis=1) # this is concatenation of title + abs
+        
+        elif self.variations == "JMAN-s+t-only": # using title feature c_t only
+            document_representation = title_representation
+        
+        elif self.variations == "JMAN-s+tg-only": # using title feature c_ta only
+            abstract_representation_title_guided = self.attention_sentence_level_title_guided(self.hidden_state_sentence,title_representation)  # shape:[None,hidden_size*4]
+            print('abstract_representation_title_guided', abstract_representation_title_guided.get_shape())
+            
+            document_representation = abstract_representation_title_guided    
+        
+        elif self.variations == "JMAN-s+att-only": # using title feature c_a only
+            abstract_representation_original = self.attention_sentence_level(self.hidden_state_sentence)  # shape:[None,hidden_size*4] # get abstract rep using attention
+            print('abstract_representation_original', abstract_representation_original.get_shape())
+            
+            document_representation = abstract_representation_original    
+        
         else: # this is the default setting, also for "JMAN", "JMAN-s"
             abstract_representation_original = self.attention_sentence_level(self.hidden_state_sentence)  # shape:[None,hidden_size*4] # get abstract rep using attention
             #abstract_representation_original = tf.add_n(self.hidden_state_sentence)/len(self.hidden_state_sentence) # get abstract rep using mean-pooling.
@@ -501,6 +572,7 @@ class JMAN:
         print('document_representation', document_representation.get_shape())
         with tf.name_scope("dropout"):
             self.h_drop = tf.nn.dropout(document_representation,keep_prob=self.dropout_keep_prob)  # shape:[None,hidden_size*4]
+            #self.h_drop = tf.matmul(self.h_drop, self.W_projection_h_drop) #to unify the dimensions of h_drop and W_projection, only used in experiments that control the hidden sizes
         # dropout some elements in the document_representation.
         # 7. logits(use linear layer)and predictions(argmax)
         with tf.name_scope("output"):
@@ -521,7 +593,7 @@ class JMAN:
             loss = loss + l2_losses
         return loss
     
-    # loss for multi-label classification (for JMAN-s)
+    # loss for multi-label classification
     def loss_multilabel(self, l2_lambda=0.0001):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
@@ -540,7 +612,7 @@ class JMAN:
             loss = self.loss_ce + self.l2_losses
         return loss
     
-    # L_sim only: j,k per batch, used in the NAACL paper
+    # L_sim only: j,k per batch
     def loss_multilabel_onto_new_sim_per_batch(self, label_sim_matrix, l2_lambda=0.0001):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
@@ -579,7 +651,7 @@ class JMAN:
         return loss
     
     # L_sim only: j,k per document
-    def loss_multilabel_onto_new_sim_per_doc(self, label_sim_matrix, l2_lambda=0.0001):
+    def loss_multilabel_onto_new_sim_per_doc(self, label_sim_matrix, l2_lambda=0.0001, dynamic_sem_l2=False):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
             # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
@@ -588,9 +660,12 @@ class JMAN:
             losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.input_y_multilabel,logits=self.logits);  # losses=tf.nn.softmax_cross_entropy_with_logits(labels=self.input__y,logits=self.logits)
             # losses=-self.input_y_multilabel*tf.log(self.logits)-(1-self.input_y_multilabel)*tf.log(1-self.logits)
             #print("sigmoid_cross_entropy_with_logits.losses:", losses)  # shape=(?, 1999).
-            losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch
+            losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch (sum of labels)
             self.loss_ce = tf.reduce_mean(losses)  # shape=().   average loss in the batch
-            self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
+            if dynamic_sem_l2:
+                self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
+            else: # not adding sim and/or sem matrices into the l2 regularisation
+                self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name and 'label_sim_mat' not in v.name]) * l2_lambda
             
             # only considering the similarity of co-occuring label in each labelset y_d.
             sig_output = tf.sigmoid(self.logits) # get s_d from l_d
@@ -607,9 +682,12 @@ class JMAN:
                 
                 label_vector = label_list[i] #y_d, shape [1,5196]
                 #print("label_vector:",label_vector)
+                label_vector_bool = tf.cast(label_vector, tf.bool) 
                 
                 #get an index vector from y_d
-                label_index_2d = tf.where(label_vector)
+                #label_index_2d = tf.where(label_vector)
+                label_index_2d = tf.where(label_vector_bool)
+                
                 #gather the s_d_true from s_d: s_d_true means the s_d values for the true labels of document d.  
                 s_d_true = tf.expand_dims(tf.gather_nd(logit_vector,label_index_2d),0)
                 #calculate |s_dj-s_dk|^2
@@ -631,9 +709,9 @@ class JMAN:
             loss = self.loss_ce + self.l2_losses + self.sim_loss
         return loss
         
-    # L_sim and L_sub - per document
+    # L_sim and L_sub - per doc
     # label_sub_matrix: sub(T_j,T_k) \in {0,1} means whether T_j is a hyponym of T_k.
-    def loss_multilabel_onto_new_simsub_per_doc(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001):
+    def loss_multilabel_onto_new_simsub_per_doc(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001, dynamic_sem_l2=False):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
             # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
@@ -644,7 +722,10 @@ class JMAN:
             #print("sigmoid_cross_entropy_with_logits.losses:", losses)  # shape=(?, 1999).
             losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch
             self.loss_ce = tf.reduce_mean(losses)  # shape=().   average loss in the batch
-            self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
+            if dynamic_sem_l2:
+                self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
+            else: # not adding sim and/or sem matrices into the l2 regularisation
+                self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name and 'label_sim_mat' not in v.name and 'label_sub_mat' not in v.name]) * l2_lambda
             
             sig_output = tf.sigmoid(self.logits) # get s_d from l_d
             sig_list=tf.unstack(sig_output)
@@ -661,9 +742,14 @@ class JMAN:
                 
                 label_vector = label_list[i] #y_d, shape [1,5196]
                 #print("label_vector:",label_vector)
+                label_vector_bool = tf.cast(label_vector, tf.bool) 
+                #print("label_vector_bool:",label_vector_bool)
                 
                 #get an index vector from y_d
-                label_index_2d = tf.where(label_vector)
+                #label_index_2d = tf.where(label_vector)
+                label_index_2d = tf.where(label_vector_bool)
+                #print("label_index_2d:",label_index_2d)
+                
                 #gather the s_d_true from s_d: s_d_true means the s_d values for the true labels of document d.  
                 s_d_true = tf.expand_dims(tf.gather_nd(logit_vector,label_index_2d),0)
                 #calculate |s_dj-s_dk|^2
@@ -762,7 +848,7 @@ class JMAN:
         return loss
     
     # L_sub only - per document
-    def loss_multilabel_onto_new_sub_per_doc(self, label_sub_matrix, l2_lambda=0.0001):
+    def loss_multilabel_onto_new_sub_per_doc(self, label_sub_matrix, l2_lambda=0.0001, dynamic_sem_l2=False):
         with tf.name_scope("loss"):
             # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
             # output: A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the softmax cross entropy loss.
@@ -773,7 +859,10 @@ class JMAN:
             #print("sigmoid_cross_entropy_with_logits.losses:", losses)  # shape=(?, 1999).
             losses = tf.reduce_sum(losses, axis=1)  # shape=(?,). loss for all data in the batch
             self.loss_ce = tf.reduce_mean(losses)  # shape=().   average loss in the batch
-            self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
+            if dynamic_sem_l2:
+                self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
+            else: # not adding sim and/or sem matrices into the l2 regularisation
+                self.l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name and 'label_sub_mat' not in v.name]) * l2_lambda
             
             ## sub_loss: matrix multiplication: only using the label relations in the label set, treating same in each batch.
             # only considering the similarity of co-occuring label in each labelset y_d.
@@ -791,9 +880,12 @@ class JMAN:
                 
                 label_vector = label_list[i] #y_d, shape [1,5196]
                 #print("label_vector:",label_vector)
+                label_vector_bool = tf.cast(label_vector, tf.bool) 
                 
                 #get an index vector from y_d
-                label_index_2d = tf.where(label_vector)
+                #label_index_2d = tf.where(label_vector)
+                label_index_2d = tf.where(label_vector_bool)
+                
                 #gather the s_d_true from s_d: s_d_true means the s_d values for the true labels of document d.  
                 s_d_true = tf.expand_dims(tf.gather_nd(logit_vector,label_index_2d),0)
                 #calculate R(s_dj)(1-R(s_dk))
