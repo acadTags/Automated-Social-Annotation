@@ -20,7 +20,7 @@ from sklearn import metrics
 
 from scipy import sparse
 #from skmultilearn.problem_transform import BinaryRelevance
-#from skmultilearn.ext import download_meka
+from skmultilearn.ext import download_meka
 from skmultilearn.ext import Meka
 
 # start time
