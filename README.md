@@ -78,6 +78,8 @@ The command below tests SVM-ovr on the Bibsonomy dataset with both ```C``` and `
 python SVM.py --dataset bibsonomy-clean --mode rbf --C 100 --gamma 100 --kfold 10
 ```
 
+For CC, HOMER, and PLST, see the README.md file in the corresponding folder in the project.
+
 #### Tips for Training and Testing
 For all the cases above, ```kfold``` can be set to -1 to test with a single fold for quick testing.
 
@@ -93,8 +95,12 @@ Check the full list of configurations in the ```JMAN_train.py```, ```HAN_train.p
 
 In ```JMAN_train.py```:
 
-The ```--variations``` option in ```JMAN_train.py``` allows to test the downgraded baselines for ablation study.
-The ```--lambda_sim``` and ```--lambda_sub``` work only when the ```--variations``` is set as JMAN.
+```--variations``` in ```JMAN_train.py``` allows to test the downgraded baselines for ablation study.
+```--lambda_sim``` and ```--lambda_sub``` work only when the ```--variations``` is set as JMAN.
+```--dynamic_sem``` allows dynamic updating the matrices <em>SIM</em> and <em>SUB</em>, default as False.
+```--dynamic_sem_l2``` specifies whether to L2-normalise the matrices <em>SIM</em> and <em>SUB</em> in the dynamic setting, default as False.
+
+The options, ```--lambda_sim```, ```--lambda_sub```, ```--dynamic_sem```, and ```--dynamic_sem_l2```, are also available in ```Bi-GRU.py``` and ```HAN.py```.
 
 # Acknowledgement
 * Our code is based on [brightmart's implementation](https://github.com/brightmart/text_classification) of TextRNN and Hierarchical Attention Network under the MIT license.
