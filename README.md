@@ -99,7 +99,7 @@ In ```JMAN_train.py```:
 ```--variations``` in ```JMAN_train.py``` allows testing the downgraded baselines and analysing the multi-source components.
 ```--lambda_sim``` and ```--lambda_sub``` work only when the ```--variations``` is set as JMAN.
 ```--dynamic_sem``` allows dynamic updating the matrices <em>SIM</em> and <em>SUB</em>, default as False.
-```--dynamic_sem_l2``` specifies whether to L2-normalise the matrices <em>SIM</em> and <em>SUB</em> in the dynamic setting, default as False.
+```--dynamic_sem_l2``` specifies whether to L2-normalise the matrices <em>Sim</em> and <em>Sub</em> in the dynamic setting, default as False.
 
 The options, ```--lambda_sim```, ```--lambda_sub```, ```--dynamic_sem```, and ```--dynamic_sem_l2```, are also available in ```Bi-GRU.py``` and ```HAN.py```.
 
