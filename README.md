@@ -21,6 +21,7 @@ JMAN (illustrated below) takes both the title and the sentences in content of a 
 * [gensim](https://radimrehurek.com/gensim/), especially ```gensim.models.wrappers.LdaMallet``` for LDA.
 * [scikit-multilearn](http://scikit.ml/), for MEKA wrapper to implement CC, HOMER, PLST.
 * [MEKA](https://waikato.github.io/meka/), for CC, HOMER, PLST (MEKA is based on [WEKA](https://www.cs.waikato.ac.nz/ml/weka/) and [MULAN](http://mulan.sourceforge.net/)).
+* [LibSVM](https://www.csie.ntu.edu.tw/~cjlin/libsvm/), for the base classifiers in CC, HOMER, and PLST. The [weka-LIBSVM](https://mvnrepository.com/artifact/nz.ac.waikato.cms.weka/LibSVM/1.0.10) wrapper is also required.
 
 # Content
 * ```./0 JMAN/JMAN_train.py``` contains code for configuration and training
