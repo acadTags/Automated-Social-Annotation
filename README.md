@@ -3,7 +3,7 @@ Joint Multi-label Attention Network (JMAN) is a neural network model for documen
 
 This tool is the source code for the proposed method and baselines reported in the papers titled
 * Automated Social Text Annotation with Joint Multi-Label Attention Networks (preprint to be available soon).
-* Joint Multi-label Attention Network for Social Text Annotation, NAACL-HLT 2019 ([paper](https://www.aclweb.org/anthology/N19-1136), [poster](http://cgi.csc.liv.ac.uk/~hang/ppt/naacl2019_poster_HD.pdf)).
+* Joint Multi-label Attention Network for Social Text Annotation, NAACL-HLT 2019 ([paper](https://www.aclweb.org/anthology/N19-1136), [poster](http://cgi.csc.liv.ac.uk/~hang/ppt/naacl2019_poster_HD.pdf)). 
 
 JMAN (illustrated below) takes both the title and the sentences in content of a document as input, and predicts whether the document is related to any of the labels in a label list. It is a multi-label classification model based on deep learning. The main contributions are: (i) title-guided sentence-level attention mechanism, using the title representation to guide the sentence "reading"; (ii) semantic-based loss regularisers, using label semantic relations, inferred from the label sets and from external Knowledge Bases, to constrain the output of the neural network.
 
@@ -95,7 +95,7 @@ Check the full list of configurations in the ```JMAN_train.py```, ```HAN_train.p
 
 In ```JMAN_train.py```:
 
-```--variations``` in ```JMAN_train.py``` allows to test the downgraded baselines for ablation study.
+```--variations``` in ```JMAN_train.py``` allows testing the downgraded baselines and analysing the multi-source components.
 ```--lambda_sim``` and ```--lambda_sub``` work only when the ```--variations``` is set as JMAN.
 ```--dynamic_sem``` allows dynamic updating the matrices <em>SIM</em> and <em>SUB</em>, default as False.
 ```--dynamic_sem_l2``` specifies whether to L2-normalise the matrices <em>SIM</em> and <em>SUB</em> in the dynamic setting, default as False.
