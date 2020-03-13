@@ -11,6 +11,11 @@ JMAN (illustrated below) takes both the title and the sentences in content of a 
     <img src="https://github.com/acadTags/Automated-Social-Annotation/blob/master/0%20JMAN/model-figure/jman-final.PNG" width="700" title="The Joint Multi-label Attention Network (JMAN)">
 </p>
 
+Update (March 2020):
+1. added dynamic update of label semantics using --dynamic_sem for JMAN, HAN, and BiGRU models.
+2. added analysis of multi-source components using --variations for the JMAN model.
+3. added baselines CC, HOMER, PLST.
+
 # Requirements
 * Python 3.6.*
 * Tensorflow 1.8.0 (also tested on version 1.4.1 and 1.14.0, not suitable for Tensorflow 2.0 so far, but welcome your help to migrate the code)
