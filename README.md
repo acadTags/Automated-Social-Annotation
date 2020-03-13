@@ -101,8 +101,9 @@ Check the full list of configurations in the ```JMAN_train.py```, ```HAN_train.p
 
 In ```JMAN_train.py```:
 
-```--variations``` in ```JMAN_train.py``` allows testing the downgraded baselines and analysing the multi-source components.
+```--variations``` in ```JMAN_train.py``` allows testing the downgraded baselines and analysing the multi-source components. The values of ```--variations`` can be set as:
 
+    JMAN,            the full JMAN model (default)
     JMAN-s,          no semantic-based loss regularisers
     JMAN-s-att,      no semantic-based loss regularisers & no original sentence-level attention mechanism
     JMAN-s-tg,       no semantic-based loss regularisers & no title-guided sentence-level attention mechanism
