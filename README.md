@@ -102,6 +102,14 @@ Check the full list of configurations in the ```JMAN_train.py```, ```HAN_train.p
 In ```JMAN_train.py```:
 
 ```--variations``` in ```JMAN_train.py``` allows testing the downgraded baselines and analysing the multi-source components.
+
+    JMAN-s,          no semantic-based loss regularisers
+    JMAN-s-att,      no semantic-based loss regularisers & no original sentence-level attention mechanism
+    JMAN-s-tg,       no semantic-based loss regularisers & no title-guided sentence-level attention mechanism
+    JMAN-s+t-only,   no semantic-based loss regularisers & only title information
+    JMAN-s+tg-only,  no semantic-based loss regularisers & only title-guided sentence-level attention mechanism
+    JMAN-s+att-only, no semantic-based loss regularisers & only original sentence-level attention mechanism
+
 ```--lambda_sim``` and ```--lambda_sub``` work only when the ```--variations``` is set as JMAN.
 ```--dynamic_sem``` allows dynamic updating the matrices <em>SIM</em> and <em>SUB</em>, default as False.
 ```--dynamic_sem_l2``` specifies whether to L2-normalise the matrices <em>Sim</em> and <em>Sub</em> in the dynamic setting, default as False.
