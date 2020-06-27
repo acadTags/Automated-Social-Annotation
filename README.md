@@ -2,7 +2,7 @@
 Joint Multi-label Attention Network (JMAN) is a neural network model for document annotation with social tags.
 
 This tool is the source code for the proposed method and baselines reported in the papers titled
-* Automated Social Text Annotation with Joint Multi-Label Attention Networks, IEEE TNNLS 2020 ([paper on Bibsonomy](https://www.bibsonomy.org/documents/2fe9a55ff296ec72758f582f86f4b94b/hangdong/TNNLS-social-anno-jman-accepted_manuscript.pdf)).
+* Automated Social Text Annotation with Joint Multi-Label Attention Networks, IEEE TNNLS 2020 ([paper on Bibsonomy](https://www.bibsonomy.org/documents/2fe9a55ff296ec72758f582f86f4b94b/hangdong/TNNLS-social-anno-jman-accepted_manuscript.pdf), [link on press](https://ieeexplore.ieee.org/document/9126211)).
 * Joint Multi-label Attention Network for Social Text Annotation, NAACL-HLT 2019 ([paper](https://www.aclweb.org/anthology/N19-1136), [poster](http://cgi.csc.liv.ac.uk/~hang/ppt/naacl2019_poster_HD.pdf)). 
 
 JMAN (illustrated below) takes both the title and the sentences in content of a document as input, and predicts whether the document is related to any of the labels in a label list. It is a multi-label classification model based on deep learning. The main contributions are: (i) title-guided sentence-level attention mechanism, using the title representation to guide the sentence "reading"; (ii) semantic-based loss regularisers, using label semantic relations, inferred from the label sets and from external Knowledge Bases, to constrain the output of the neural network.
