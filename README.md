@@ -41,6 +41,11 @@ Update (March 2020):
 * ```./meka_adapted``` contains the code that need to update to the scikit-multilearn package to run CC, HOMER, and PLST with base classfiers using complex commands on MEKA.
 * ```./0 JMAN/results/``` contains prediction results of JMAN for testing documents in the Bibsonomy, CiteULike, and Zhihu datasets.
 
+# Key Implementations
+For title-guided sentence-level attention mechansism, see [```def attention_sentence_level_title_guided(self, hidden_state_sentence, title_representation)```](https://github.com/acadTags/Automated-Social-Annotation/blob/c4cc461029de03fea5547b578b3bca1b9aaf6125/0%20JMAN/JMAN_model.py#L268)
+
+For semantic-based loss regularisers, see [```def loss_multilabel_onto_new_simsub_per_doc(self, label_sim_matrix, label_sub_matrix, l2_lambda=0.0001, dynamic_sem_l2=False):```](https://github.com/acadTags/Automated-Social-Annotation/blob/c4cc461029de03fea5547b578b3bca1b9aaf6125/0%20JMAN/JMAN_model.py#L714)
+
 # Quick Start
 The files under ```./datasets```, ```./embeddings``` and ```./knowledge_bases``` can be downloaded from [OneDrive](https://1drv.ms/f/s!AlvsB_ZEXPkijqsFvM0iDt-AYi6iEg) or [Baidu Drive](https://pan.baidu.com/s/1-geSqJvwfWh5NZYXsWZEcA)```password:w9iu```. For the format of datasets, embeddings or knowledge bases, see the ```readme.md``` file in the corresponding folder. 
 
