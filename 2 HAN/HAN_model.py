@@ -197,7 +197,6 @@ class HAN:
             self.context_vecotor_sentence = tf.get_variable("what_is_the_informative_sentence",
                                                             shape=[self.hidden_size * 2], initializer=self.initializer)
                                                             
-    # very nice representation: I can generally understand it, but so far I cannot preogram this from scratch.    
     def attention_word_level(self, hidden_state):
         """
         input1:self.hidden_state: hidden_state:list,len:sentence_length,element:[batch_size*num_sentences,hidden_size*2]
