@@ -25,3 +25,11 @@ This folder contains dataset files:
 About data split:
 
 * We split the data to training, validation, testing sets in the code. As the order of the documents is already randomised, we selected the last 10% documents as the testing set, and used the rest 90% for 10-fold cross-validation.
+
+Acknowledgement:
+
+* The official Bibsonomy dataset is acquired from https://www.kde.cs.uni-kassel.de/bibsonomy/dumps/ after request.
+* The official Zhihu dataset is from https://biendata.com/competition/zhihu/data/.
+* The CiteULike-a and CiteULike-t datasets are from *Collaborative topic regression with social regularization for tag recommendation* (Wang, Chen, and Li, 2013, [link](https://sites.cs.ucsb.edu/~binyichen/IJCAI13-400.pdf)).
+* The whole Microsoft Concept Graph is acquired from https://concept.research.microsoft.com/Home/Introduction.
+* The 2012 ACM Computing Classification System (latest version) is from https://www.acm.org/publications/class-2012.
