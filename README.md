@@ -11,6 +11,8 @@ JMAN (illustrated below) takes both the title and the sentences in content of a 
     <img src="https://github.com/acadTags/Automated-Social-Annotation/blob/master/0%20JMAN/model-figure/jman-final.PNG" width="700" title="The Joint Multi-label Attention Network (JMAN)">
 </p>
 
+The preprocessed Bibsonomy, Zhihu, CiteULike-a, and CiteULike-t datasets in this study are available in the [```dataset'''](https://github.com/acadTags/Automated-Social-Annotation/tree/master/datasets) folder.
+
 Update (March 2020):
 1. added dynamic update of label semantics using --dynamic_sem for JMAN, HAN, and BiGRU models.
 2. added analysis of multi-source components using --variations for the JMAN model.
@@ -129,9 +131,9 @@ The options, ```--lambda_sim```, ```--lambda_sub```, ```--dynamic_sem```, and ``
 * The CiteULike-a and CiteULike-t datasets are from *Collaborative topic regression with social regularization for tag recommendation* (Wang, Chen, and Li, 2013, [link](https://sites.cs.ucsb.edu/~binyichen/IJCAI13-400.pdf)).
 * The whole Microsoft Concept Graph is acquired from https://concept.research.microsoft.com/Home/Introduction.
 
-# How to cite
+# How to Cite
 
-Please use the bibtex below if you used the implementation and [datasets]( https://github.com/acadTags/Automated-Social-Annotation/tree/master/datasets) in this study.
+Please cite with the bibtex below if you used the implementation and [datasets]( https://github.com/acadTags/Automated-Social-Annotation/tree/master/datasets) in this study.
 
 ```
 @ARTICLE{Dong2020jman,  
