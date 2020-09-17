@@ -11,7 +11,7 @@ JMAN (illustrated below) takes both the title and the sentences in content of a 
     <img src="https://github.com/acadTags/Automated-Social-Annotation/blob/master/0%20JMAN/model-figure/jman-final.PNG" width="700" title="The Joint Multi-label Attention Network (JMAN)">
 </p>
 
-The preprocessed Bibsonomy, Zhihu, CiteULike-a, and CiteULike-t datasets in this study are available in the [```dataset'''](https://github.com/acadTags/Automated-Social-Annotation/tree/master/datasets) folder.
+***Link to datasets***: The preprocessed Bibsonomy, Zhihu, CiteULike-a, and CiteULike-t datasets in this study are available in the [```dataset```](https://github.com/acadTags/Automated-Social-Annotation/tree/master/datasets) folder.
 
 Update (March 2020):
 1. added dynamic update of label semantics using --dynamic_sem for JMAN, HAN, and BiGRU models.
