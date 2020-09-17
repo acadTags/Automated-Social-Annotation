@@ -28,6 +28,8 @@ About data split:
 
 Acknowledgement:
 
+Our datasets are preprocessed from the sources below.
+
 * The official Bibsonomy dataset is acquired from https://www.kde.cs.uni-kassel.de/bibsonomy/dumps/ after request.
 * The official Zhihu dataset is from https://biendata.com/competition/zhihu/data/.
 * The CiteULike-a and CiteULike-t datasets are from *Collaborative topic regression with social regularization for tag recommendation* (Wang, Chen, and Li, 2013, [link](https://sites.cs.ucsb.edu/~binyichen/IJCAI13-400.pdf)).
