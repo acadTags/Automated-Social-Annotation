@@ -128,3 +128,19 @@ The options, ```--lambda_sim```, ```--lambda_sub```, ```--dynamic_sem```, and ``
 * The official Zhihu dataset is from https://biendata.com/competition/zhihu/data/.
 * The CiteULike-a and CiteULike-t datasets are from *Collaborative topic regression with social regularization for tag recommendation* (Wang, Chen, and Li, 2013, [link](https://sites.cs.ucsb.edu/~binyichen/IJCAI13-400.pdf)).
 * The whole Microsoft Concept Graph is acquired from https://concept.research.microsoft.com/Home/Introduction.
+
+# How to cite
+
+Please use the bibtex below if you used the implementation and [datasets]( https://github.com/acadTags/Automated-Social-Annotation/tree/master/datasets) in this study.
+
+```
+@ARTICLE{Dong2020jman,  
+    author={H. {Dong} and W. {Wang} and K. {Huang} and F. {Coenen}},  
+    journal={IEEE Transactions on Neural Networks and Learning Systems},   
+    title={Automated Social Text Annotation With Joint Multilabel Attention Networks},   
+    year={2020},  
+    volume={},  
+    number={},  
+    pages={1-15},
+}
+```
