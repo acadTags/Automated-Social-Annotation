@@ -12,7 +12,7 @@ JMAN (illustrated below) takes both the title and the sentences in content of a 
 </p>
 
 Update (Sep 2020):
-1. ***Link to datasets***: The preprocessed Bibsonomy, Zhihu, CiteULike-a, and CiteULike-t datasets in this study are available in the [```dataset```](https://github.com/acadTags/Automated-Social-Annotation/tree/master/datasets) folder.
+1. ***Link to datasets***: The preprocessed Bibsonomy, Zhihu, CiteULike-a, and CiteULike-t datasets in this study are available in the [```datasets```](https://github.com/acadTags/Automated-Social-Annotation/tree/master/datasets) folder.
 
 Update (March 2020):
 1. added dynamic update of label semantics using --dynamic_sem for JMAN, HAN, and BiGRU models.
